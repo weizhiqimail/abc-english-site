@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { Button, Input, Message } from "@alifd/next";
+import { Button, Input, Message, Icon } from "@alifd/next";
 import { NavLink, useLocation, useNavigate, useOutlet } from "react-router-dom";
 import { useAuth } from "../features/auth/AuthContext";
 import { getActiveRequestCount } from "../services/api";
@@ -136,7 +136,8 @@ export default function Layout() {
                     aria-expanded={accountOpen}
                     onClick={() => setAccountOpen((open) => !open)}
                   >
-                    {user.nickname || user.username}⌄
+                    {user.nickname || user.username}
+                    <Icon size="small" type="arrow-down" />
                   </Button>
                   {accountOpen && (
                     <div className="account-popup" role="menu">

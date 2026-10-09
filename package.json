@@ -1,22 +1,20 @@
 {
   "name": "abc-english-site",
   "version": "1.0.0",
-  "private": true,
+  "private": false,
   "description": "ABC English vocabulary learning website",
   "scripts": {
     "env:development": "npx --yes vercel@62.4.0 --cwd . env run --project abc-english-site -e development --",
+    "db:generate": "prisma generate --schema prisma/postgres/schema.prisma",
     "web:dev": "vite --config web/vite.config.js",
     "web:build": "vite build --config web/vite.config.js",
-    "db:generate": "prisma generate --schema prisma/postgres/schema.prisma",
+    "server": "npm run db:generate && npm run env:development -- node server/src/index.js",
+    "server:dev": "npm run db:generate && npm run env:development -- nodemon --watch server/src --ext js,json server/src/index.js",
+    "dev": "concurrently -k -n API,WEB -c blue,magenta \"npm:server:dev\" \"npm:web:dev\"",
+    "format": "prettier --write .",
+    "format:check": "prettier --check .",
     "vercel:build": "npm run db:generate && npm run web:build",
-    "deploy:vercel": "vercel --prod",
-    "site:server": "npm run db:generate && npm run env:development -- node server/src/index.js",
-    "site:server:dev": "npm run db:generate && npm run env:development -- nodemon --watch server/src --ext js,json server/src/index.js",
-    "site:dev": "concurrently -k -n API,WEB -c blue,magenta \"npm:site:server:dev\" \"npm:web:dev\"",
-    "site:test": "node server/src/scripts/smokeTest.js",
-    "site:test:unit": "node --test server/src/tests/*.test.js",
-    "format:site": "prettier --plugin=prettier-plugin-prisma --plugin=prettier-plugin-sql --write \"web/**/*.{js,jsx,css,html}\" \"server/**/*.js\" \"api/**/*.js\" \"prisma/**/*.{prisma,sql}\" \"package.json\" \"README.md\"",
-    "format:site:check": "prettier --plugin=prettier-plugin-prisma --plugin=prettier-plugin-sql --check \"web/**/*.{js,jsx,css,html}\" \"server/**/*.js\" \"api/**/*.js\" \"prisma/**/*.{prisma,sql}\" \"package.json\" \"README.md\""
+    "deploy:vercel": "vercel --prod"
   },
   "dependencies": {
     "@alifd/next": "^1.27.31",
