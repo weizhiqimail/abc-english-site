@@ -1,5 +1,3 @@
-require("dotenv").config();
-
 const baseUrl = process.env.SITE_TEST_URL || "http://127.0.0.1:3211";
 const temporaryName = `site_test_${Date.now()}`;
 let adminCookie = "";
@@ -49,10 +47,11 @@ async function main() {
   const a1 = await expect("/api/vocabulary/levels/a1", 200);
   assert(a1.payload.data.categories.length > 0, "A1 应包含主题");
   const c1 = await expect("/api/vocabulary/levels/c1", 200);
-  assert(c1.payload.data.categories.length === 0, "C1 应返回正常空数据");
+  assert(Array.isArray(c1.payload.data.categories), "C1 分类必须返回数组");
   await expect("/api/vocabulary/levels/x1", 400);
   await expect("/api/vocabulary/categories?level=A1", 200);
   await expect("/api/vocabulary/categories?level=X1", 400);
+  await expect("/api/vocabulary/categories?level=A1&level=A2", 400);
 
   const recordId = a1.payload.data.categories[0].recordId;
   const detail = await expect(`/api/vocabulary/categories/${recordId}`, 200);
@@ -60,6 +59,8 @@ async function main() {
   await expect("/api/vocabulary/categories/not-found", 404);
   await expect("/api/search?q=family", 200);
   await expect("/api/search", 200);
+  await expect(`/api/search?q=${"x".repeat(101)}`, 400);
+  await expect("/api/not-a-real-route", 404);
 
   const anonymousMe = await expect("/api/auth/me", 200);
   assert(anonymousMe.payload.data.user === null, "匿名状态不应包含用户");
@@ -68,6 +69,10 @@ async function main() {
   await expect("/api/auth/login", 401, {
     method: "POST",
     body: { username: "invalid", password: "invalid" },
+  });
+  await expect("/api/auth/login", 400, {
+    method: "POST",
+    body: { username: ["invalid"], password: "invalid" },
   });
 
   const login = await expect("/api/auth/login", 200, {

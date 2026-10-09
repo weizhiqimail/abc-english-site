@@ -1,13 +1,19 @@
 const authService = require("../services/authService");
 const { authCookieName } = require("../config");
 const { fail } = require("../utils/response");
+const { assertMethods } = require("../utils/contracts");
+
+assertMethods(authService, "authService", ["authenticate"]);
 
 async function optionalAuth(request, _response, next) {
-  // 没有认证 Cookie 时直接保持匿名身份，公开词汇接口仍可正常访问。
-  request.user = await authService.authenticate(
-    request.cookies?.[authCookieName],
-  );
-  next();
+  try {
+    request.user = await authService.authenticate(
+      request.cookies?.[authCookieName],
+    );
+    next();
+  } catch (error) {
+    next(error);
+  }
 }
 
 function requireAuth(request, response, next) {

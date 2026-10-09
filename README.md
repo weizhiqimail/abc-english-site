@@ -79,9 +79,21 @@ npm run vercel:build         # 完整 Vercel 构建
 npm run db:generate:postgres # 生成 Prisma Client
 npm run db:migrate:postgres  # 初始化 Postgres 表
 npm run db:seed-admin        # 创建初始管理员
+npm run db:migrate:error-logs:production # 创建生产错误日志表
 npm run site:test            # API 冒烟测试
+npm run site:test:unit       # 防御性校验与日志单元测试
 npm run format:site:check    # 检查代码格式
 ```
+
+## 服务日志与错误留存
+
+- Vercel Function 使用单行 JSON 结构化日志，包含请求 ID、路径、状态码、耗时、部署环境和 Vercel invocation ID；响应也会返回 `x-request-id`，便于从用户报错定位日志。
+- 普通请求日志由 Vercel Runtime Logs 管理并按当前套餐的保留周期自动过期，不写入 Serverless 临时文件系统。
+- 未预期的 `5xx` 错误会在输出到 Vercel 的同时，脱敏后持久化到 Postgres `error_logs` 表；管理员可在“数据库”页面查看。
+- 密码、Cookie、Token、Authorization 和 API Key 不写入日志；URL 查询字符串也不会进入长期错误记录。
+- 如果数据库日志写入失败，业务错误处理仍会正常返回，写入失败原因仅输出到 Vercel，避免日志系统形成级联故障。
+
+Vercel Runtime Logs 对单次请求有行数和总量限制，因此服务只记录请求完成、请求失败和日志持久化失败等关键事件，不输出请求体或逐步调试噪声。
 
 ## 数据与认证
 

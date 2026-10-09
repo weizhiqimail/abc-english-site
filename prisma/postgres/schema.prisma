@@ -219,3 +219,26 @@ model VocabularyExample {
   @@index([wordId, position])
   @@map("vocabulary_examples")
 }
+
+model ErrorLog {
+  id           BigInt   @id @default(autoincrement())
+  requestId    String?  @map("request_id") @db.VarChar(128)
+  vercelId     String?  @map("vercel_id") @db.VarChar(255)
+  deploymentId String?  @map("deployment_id") @db.VarChar(255)
+  environment  String   @db.VarChar(32)
+  method       String?  @db.VarChar(16)
+  path         String?  @db.Text
+  userId       Int?     @map("user_id")
+  errorName    String   @map("error_name") @db.VarChar(120)
+  errorCode    String?  @map("error_code") @db.VarChar(120)
+  message      String   @db.Text
+  stack        String?  @db.Text
+  fingerprint  String   @db.Char(64)
+  context      Json?
+  createdAt    DateTime @default(now()) @map("created_at")
+
+  @@index([createdAt])
+  @@index([fingerprint, createdAt])
+  @@index([requestId])
+  @@map("error_logs")
+}

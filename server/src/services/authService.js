@@ -2,6 +2,8 @@ const crypto = require("node:crypto");
 const bcrypt = require("bcryptjs");
 const prisma = require("../lib/prisma");
 const { tokenMaxAgeMs } = require("../config");
+const DUMMY_PASSWORD_HASH =
+  "$2b$12$rLZRlPiThw7vtbI4BQ/mduaDX/P8PQT.vHU0DMJve8mwhSuFbALNO";
 
 // 数据库只保存 SHA-256 摘要，泄露数据库也无法直接得到浏览器 Cookie 中的令牌。
 const hashToken = (token) =>
@@ -16,8 +18,13 @@ const publicUser = (user) =>
   };
 
 async function login(username, password) {
+  if (typeof username !== "string" || typeof password !== "string") return null;
   const user = await prisma.user.findUnique({ where: { username } });
-  if (!user || !(await bcrypt.compare(password, user.passwordHash))) {
+  const passwordMatches = await bcrypt.compare(
+    password,
+    user?.passwordHash || DUMMY_PASSWORD_HASH,
+  );
+  if (!user || !passwordMatches) {
     return null;
   }
   // 使用不可读的随机令牌而不是 JWT，服务端可以随时撤销登录状态。
@@ -30,7 +37,12 @@ async function login(username, password) {
 }
 
 async function authenticate(token) {
-  if (!token) {
+  if (
+    typeof token !== "string" ||
+    token.length < 32 ||
+    token.length > 256 ||
+    !/^[A-Za-z0-9_-]+$/.test(token)
+  ) {
     return null;
   }
   const authToken = await prisma.authToken.findUnique({
@@ -50,7 +62,12 @@ async function authenticate(token) {
 }
 
 async function logout(token) {
-  if (token) {
+  if (
+    typeof token === "string" &&
+    token.length >= 32 &&
+    token.length <= 256 &&
+    /^[A-Za-z0-9_-]+$/.test(token)
+  ) {
     await prisma.authToken.deleteMany({
       where: { tokenHash: hashToken(token) },
     });
@@ -62,5 +79,10 @@ module.exports = {
   authenticate,
   logout,
   publicUser,
-  hashPassword: (value) => bcrypt.hash(value, 12),
+  hashPassword: (value) => {
+    if (typeof value !== "string" || value.length < 8 || value.length > 255) {
+      throw new TypeError("密码必须是 8 到 255 位字符串");
+    }
+    return bcrypt.hash(value, 12);
+  },
 };

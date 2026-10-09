@@ -4,6 +4,14 @@ const authService = require("../services/authService");
 const { requireAdmin } = require("../middleware/auth");
 const { ok, fail } = require("../utils/response");
 const asyncRoute = require("../utils/asyncRoute");
+const {
+  assertAllowedKeys,
+  boundedInteger,
+  optionalString,
+  positiveInteger,
+  requirePlainObject,
+  requiredString,
+} = require("../utils/validation");
 
 const router = express.Router();
 router.use(requireAdmin);
@@ -20,6 +28,12 @@ const selectUser = {
 // 数据库浏览只开放已知业务表，避免管理员通过 URL 构造任意模型查询。
 const databaseTables = [
   { key: "users", label: "用户", delegate: "user", orderBy: { id: "asc" } },
+  {
+    key: "error_logs",
+    label: "服务错误日志",
+    delegate: "errorLog",
+    orderBy: { createdAt: "desc" },
+  },
   {
     key: "auth_tokens",
     label: "登录令牌",
@@ -69,6 +83,7 @@ function sanitizeDatabaseRow(row) {
       if (key === "passwordHash" || key === "tokenHash") {
         return [key, "[敏感信息已隐藏]"];
       }
+      if (typeof value === "bigint") return [key, value.toString()];
       return [key, value];
     }),
   );
@@ -99,11 +114,17 @@ router.get(
       return fail(response, 404, "数据表不存在");
     }
 
-    const page = Math.max(1, Number(request.query.page) || 1);
-    const pageSize = Math.min(
-      100,
-      Math.max(10, Number(request.query.pageSize) || 25),
-    );
+    const page = boundedInteger(request.query.page, {
+      label: "页码",
+      defaultValue: 1,
+      max: 1_000_000,
+    });
+    const pageSize = boundedInteger(request.query.pageSize, {
+      label: "每页数量",
+      defaultValue: 25,
+      min: 10,
+      max: 100,
+    });
     const [total, rows] = await Promise.all([
       prisma[table.delegate].count(),
       prisma[table.delegate].findMany({
@@ -139,13 +160,26 @@ router.get(
 router.post(
   "/users",
   asyncRoute(async (request, response) => {
-    const username = String(request.body?.username || "").trim();
-    const password = String(request.body?.password || "");
+    const body = requirePlainObject(request.body);
+    assertAllowedKeys(body, ["username", "password", "nickname"]);
+    const username = requiredString(body.username, {
+      label: "用户名",
+      minLength: 3,
+      maxLength: 80,
+      pattern: /^[A-Za-z0-9._@-]+$/,
+      patternMessage: "用户名只能包含字母、数字及 . _ @ -",
+    });
+    const password = requiredString(body.password, {
+      label: "密码",
+      trim: false,
+      minLength: 8,
+      maxLength: 255,
+    });
     const nickname =
-      String(request.body?.nickname || username).trim() || username;
-    if (username.length < 3 || password.length < 8) {
-      return fail(response, 400, "用户名至少 3 位，密码至少 8 位");
-    }
+      optionalString(body.nickname, {
+        label: "昵称",
+        maxLength: 100,
+      }) || username;
     const exists = await prisma.user.findUnique({ where: { username } });
     if (exists) {
       return fail(response, 409, "用户名已存在");
@@ -168,43 +202,54 @@ router.post(
 router.patch(
   "/users/:id",
   asyncRoute(async (request, response) => {
-    const id = Number(request.params.id);
+    const id = positiveInteger(request.params.id, "用户 ID");
+    const body = requirePlainObject(request.body);
+    assertAllowedKeys(body, ["username", "password", "nickname"]);
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) {
       return fail(response, 404, "用户不存在");
     }
     if (
       existing.role === "admin" &&
-      request.body.username &&
-      request.body.username !== existing.username
+      body.username &&
+      body.username !== existing.username
     ) {
       return fail(response, 400, "管理员用户名不能在用户管理页面修改");
     }
     const data = {};
-    if (request.body.nickname !== undefined) {
-      data.nickname = String(request.body.nickname).trim() || existing.username;
+    if (body.nickname !== undefined) {
+      data.nickname =
+        optionalString(body.nickname, {
+          label: "昵称",
+          allowEmpty: true,
+          maxLength: 100,
+        }) || existing.username;
     }
-    if (request.body.username !== undefined && existing.role !== "admin") {
-      const username = String(request.body.username).trim();
-      if (username.length < 3) {
-        return fail(response, 400, "用户名至少 3 位");
-      }
+    if (body.username !== undefined && existing.role !== "admin") {
+      const username = requiredString(body.username, {
+        label: "用户名",
+        minLength: 3,
+        maxLength: 80,
+        pattern: /^[A-Za-z0-9._@-]+$/,
+        patternMessage: "用户名只能包含字母、数字及 . _ @ -",
+      });
       data.username = username;
     }
-    if (request.body.password) {
-      if (String(request.body.password).length < 8) {
-        return fail(response, 400, "密码至少 8 位");
-      }
-      data.passwordHash = await authService.hashPassword(
-        String(request.body.password),
-      );
+    if (body.password !== undefined) {
+      const password = requiredString(body.password, {
+        label: "密码",
+        trim: false,
+        minLength: 8,
+        maxLength: 255,
+      });
+      data.passwordHash = await authService.hashPassword(password);
     }
     const user = await prisma.user.update({
       where: { id },
       data,
       select: selectUser,
     });
-    if (request.body.password) {
+    if (body.password !== undefined) {
       await prisma.authToken.deleteMany({ where: { userId: id } });
     }
     ok(response, user);
@@ -214,7 +259,7 @@ router.patch(
 router.delete(
   "/users/:id",
   asyncRoute(async (request, response) => {
-    const id = Number(request.params.id);
+    const id = positiveInteger(request.params.id, "用户 ID");
     const existing = await prisma.user.findUnique({ where: { id } });
     if (!existing) {
       return fail(response, 404, "用户不存在");
