@@ -250,6 +250,7 @@ async function findWord(recordId, wordKey) {
 
 const favoriteLookupKey = (recordId, wordKey) =>
   JSON.stringify([String(recordId), String(wordKey)]);
+const FAVORITE_QUERY_BATCH_SIZE = 250;
 
 async function findWords(favorites = []) {
   if (!Array.isArray(favorites) || favorites.length === 0) return new Map();
@@ -264,24 +265,35 @@ async function findWords(favorites = []) {
   if (unique.size === 0) return new Map();
 
   // 收藏关系没有直接外键到词条，需按 (分类 ID, 词条键) 批量匹配。
-  // 一次 findMany 取代逐条 findWord，避免 Serverless 并发放大数据库连接压力。
-  const rows = await prisma.vocabularyWord.findMany({
-    where: {
-      OR: [...unique.values()].map(({ recordId, wordKey }) => {
-        const isTranslation = wordKey.startsWith("translation:");
-        return {
-          categoryRecordId: recordId,
-          ...(isTranslation
-            ? { translationId: wordKey.slice("translation:".length) }
-            : { wordEntryId: wordKey }),
-        };
-      }),
-    },
-    include: {
-      category: true,
-      examples: { orderBy: { position: "asc" } },
-    },
-  });
+  // 每批设置上限并顺序执行，既消除 N+1，也避免超大 OR 和并发查询冲击 Serverless 连接池。
+  const rows = [];
+  const entries = [...unique.values()];
+  for (
+    let offset = 0;
+    offset < entries.length;
+    offset += FAVORITE_QUERY_BATCH_SIZE
+  ) {
+    const batch = entries.slice(offset, offset + FAVORITE_QUERY_BATCH_SIZE);
+    rows.push(
+      ...(await prisma.vocabularyWord.findMany({
+        where: {
+          OR: batch.map(({ recordId, wordKey }) => {
+            const isTranslation = wordKey.startsWith("translation:");
+            return {
+              categoryRecordId: recordId,
+              ...(isTranslation
+                ? { translationId: wordKey.slice("translation:".length) }
+                : { wordEntryId: wordKey }),
+            };
+          }),
+        },
+        include: {
+          category: true,
+          examples: { orderBy: { position: "asc" } },
+        },
+      })),
+    );
+  }
   const found = new Map();
   for (const row of rows) {
     const value = {

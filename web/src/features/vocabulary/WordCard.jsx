@@ -5,6 +5,7 @@ import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { post, remove } from "../../services/api";
 import { notify } from "../../services/notification";
+import { favoriteIdentity } from "../favorites/favoriteIdentity";
 
 const Placeholder = ({ onClick }) => (
   <button type="button" className="masked-text" onClick={onClick}>
@@ -19,7 +20,7 @@ export default function WordCard({
   showTranslation,
   defaultCollection,
   favoriteCollectionLabel = "默认收藏夹",
-  favoriteKeys,
+  favoriteIdentities,
   onFavoriteChange,
 }) {
   // 每个字段分别记录临时显示状态，点击某一项不会影响同卡片的其他内容。
@@ -39,7 +40,8 @@ export default function WordCard({
     card.wordEntryId != null
       ? String(card.wordEntryId)
       : `translation:${card.translationId}`;
-  const favorite = favoriteKeys?.has(wordKey);
+  const identity = favoriteIdentity(recordId, wordKey);
+  const favorite = favoriteIdentities?.has(identity);
   const examples = card.examples || [];
   const visibleExamples = showAllExamples ? examples : examples.slice(0, 2);
   useEffect(() => setWordVisible(showWord), [showWord]);
@@ -77,7 +79,7 @@ export default function WordCard({
       setFavoritePending(true);
       if (favorite) {
         await remove(
-          `/collections/${defaultCollection.id}/favorites/${encodeURIComponent(wordKey)}`,
+          `/collections/${defaultCollection.id}/favorites/${encodeURIComponent(wordKey)}?recordId=${encodeURIComponent(recordId)}`,
           { globalLoading: false },
         );
       } else {
@@ -87,7 +89,7 @@ export default function WordCard({
           { globalLoading: false },
         );
       }
-      onFavoriteChange?.(wordKey, !favorite);
+      onFavoriteChange?.(identity, !favorite);
       notify(favorite ? "已取消收藏" : `已收藏到“${favoriteCollectionLabel}”`);
     } catch (error) {
       notify(error.message, "error");

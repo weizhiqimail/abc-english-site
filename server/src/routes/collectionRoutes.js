@@ -145,8 +145,19 @@ router.post(
       return fail(response, 404, "词汇不存在");
     }
     const favorite = await prisma.favorite.upsert({
-      where: { collectionId_wordKey: { collectionId, wordKey } },
-      update: { recordId },
+      where: {
+        collectionId_recordId_wordKey: { collectionId, recordId, wordKey },
+      },
+      update: {
+        wordEntryId:
+          found.card.wordEntryId == null
+            ? null
+            : String(found.card.wordEntryId),
+        translationId:
+          found.card.translationId == null
+            ? null
+            : String(found.card.translationId),
+      },
       create: {
         collectionId,
         wordKey,
@@ -169,6 +180,12 @@ router.delete(
   "/collections/:id/favorites/:wordKey",
   asyncRoute(async (request, response) => {
     const collectionId = positiveInteger(request.params.id, "收藏夹 ID");
+    const recordId = requiredString(request.query.recordId, {
+      label: "分类 ID",
+      maxLength: 64,
+      pattern: /^[A-Za-z0-9._:-]+$/,
+      patternMessage: "分类 ID 格式错误",
+    });
     const wordKey = requiredString(request.params.wordKey, {
       label: "词汇键",
       maxLength: 100,
@@ -182,7 +199,8 @@ router.delete(
       return fail(response, 404, "收藏夹不存在");
     }
     await prisma.favorite.deleteMany({
-      where: { collectionId, wordKey },
+      // wordKey 不是全局唯一；删除操作必须与新增操作使用同一复合身份。
+      where: { collectionId, recordId, wordKey },
     });
     ok(response, { deleted: true });
   }),

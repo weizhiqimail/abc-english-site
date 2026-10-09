@@ -129,7 +129,7 @@ async function main() {
     "收藏夹详情没有返回完整词卡数据",
   );
   await expect(
-    `/api/collections/${temporaryCollectionId}/favorites/${encodeURIComponent(wordKey)}`,
+    `/api/collections/${temporaryCollectionId}/favorites/${encodeURIComponent(wordKey)}?recordId=${encodeURIComponent(recordId)}`,
     200,
     { method: "DELETE", cookie: adminCookie },
   );

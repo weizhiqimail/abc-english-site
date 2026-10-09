@@ -1,14 +1,17 @@
-import { Button, Checkbox, Dialog, Input, Message } from "@alifd/next";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { Button, Checkbox, Dialog, Input } from "@alifd/next";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
 import { get, patch, post, remove } from "../../services/api";
 import { notify } from "../../services/notification";
 import WordCard from "../vocabulary/WordCard";
+import { favoriteIdentity } from "./favoriteIdentity";
 
 export default function CollectionsPage() {
   const { collectionId } = useParams();
   const navigate = useNavigate();
   const [collections, setCollections] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState("");
   const [nameDialog, setNameDialog] = useState(null);
   const [name, setName] = useState("");
   const [actionId, setActionId] = useState(null);
@@ -20,14 +23,25 @@ export default function CollectionsPage() {
   );
   const actionsRef = useRef(null);
 
-  const load = () =>
-    get("/collections")
-      .then(setCollections)
-      .catch((error) => Message.error(error.message));
+  const load = useCallback(async ({ signal, rethrow = false } = {}) => {
+    setLoading(true);
+    setLoadError("");
+    try {
+      setCollections(await get("/collections", { signal }));
+    } catch (requestError) {
+      if (requestError.name === "AbortError") return;
+      setLoadError(requestError.message);
+      if (rethrow) throw requestError;
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
-    load();
-  }, []);
+    const controller = new AbortController();
+    load({ signal: controller.signal });
+    return () => controller.abort();
+  }, [load]);
   useEffect(() => localStorage.setItem("show-word", showWord), [showWord]);
   useEffect(
     () => localStorage.setItem("show-translation", showTranslation),
@@ -56,7 +70,7 @@ export default function CollectionsPage() {
         : await patch(`/collections/${nameDialog.id}`, { name: trimmedName });
       setNameDialog(null);
       setName("");
-      await load();
+      await load({ rethrow: true });
       notify(nameDialog === "new" ? "收藏夹已创建" : "收藏夹名称已更新");
     } catch (error) {
       notify(error.message, "error");
@@ -83,6 +97,18 @@ export default function CollectionsPage() {
     });
   };
 
+  if (loading && collections.length === 0) {
+    return <div className="page-state">正在加载收藏夹…</div>;
+  }
+  if (loadError) {
+    return (
+      <div className="page-state error-state">
+        <p>收藏夹加载失败：{loadError}</p>
+        <Button onClick={() => load()}>重试</Button>
+      </div>
+    );
+  }
+
   if (collectionId) {
     if (!selectedCollection) {
       return collections.length ? (
@@ -90,8 +116,10 @@ export default function CollectionsPage() {
       ) : null;
     }
     const favorites = selectedCollection.favorites.filter((item) => item.card);
-    const favoriteKeys = new Set(
-      selectedCollection.favorites.map((item) => item.wordKey),
+    const favoriteIdentities = new Set(
+      selectedCollection.favorites.map((item) =>
+        favoriteIdentity(item.recordId, item.wordKey),
+      ),
     );
     return (
       <section className="content-width detail-page collection-detail-page">
@@ -132,9 +160,9 @@ export default function CollectionsPage() {
                 showWord={showWord}
                 showTranslation={showTranslation}
                 defaultCollection={selectedCollection}
-                favoriteKeys={favoriteKeys}
+                favoriteIdentities={favoriteIdentities}
                 favoriteCollectionLabel={selectedCollection.name}
-                onFavoriteChange={(wordKey, value) => {
+                onFavoriteChange={(identity, value) => {
                   if (!value) {
                     setCollections((current) =>
                       current.map((collection) =>
@@ -142,7 +170,11 @@ export default function CollectionsPage() {
                           ? {
                               ...collection,
                               favorites: collection.favorites.filter(
-                                (item) => item.wordKey !== wordKey,
+                                (item) =>
+                                  favoriteIdentity(
+                                    item.recordId,
+                                    item.wordKey,
+                                  ) !== identity,
                               ),
                               _count: {
                                 favorites: Math.max(

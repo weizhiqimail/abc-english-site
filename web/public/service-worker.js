@@ -89,7 +89,7 @@
  */
 
 // 缓存版本号也是升级开关。改变预缓存内容或缓存逻辑时应同步递增版本。
-const CACHE_NAME = "abc-english-shell-v1";
+const CACHE_NAME = "abc-english-shell-v2";
 
 // 最小应用外壳：入口页、默认启动路由、manifest 和图标必须能在离线时直接取得。
 const APP_SHELL = [
@@ -106,15 +106,21 @@ self.addEventListener("install", (event) => {
       // addAll 具有整体失败语义；任一必要文件不可访问时，不启用一个残缺的 Worker。
       await cache.addAll(APP_SHELL);
 
-      // Vite 的 JS/CSS 文件名带构建哈希，无法提前硬编码。读取构建后的入口 HTML，提取
-      // /assets/ 引用并预缓存，确保用户首次安装后立即断网仍能加载 React 应用。
-      const entry = await cache.match("/");
-      const html = await entry.text();
-      const assetPaths = [...html.matchAll(/(?:src|href)="([^"#]+)"/g)]
-        .map((match) => match[1])
-        .filter((path) => path.startsWith("/assets/"));
+      // 路由按需拆包后，入口 HTML 只引用首屏文件。构建清单包含所有异步 chunk 及其 CSS，
+      // 安装时完整预缓存，确保从未访问过的路由也能在离线状态首次打开。
+      const manifestResponse = await fetch("/asset-manifest.json", {
+        cache: "no-store",
+      });
+      if (!manifestResponse.ok) throw new Error("无法读取前端构建清单");
+      const manifest = await manifestResponse.json();
+      const assetPaths = new Set();
+      for (const item of Object.values(manifest)) {
+        if (item.file) assetPaths.add(`/${item.file}`);
+        for (const file of item.css || []) assetPaths.add(`/${file}`);
+        for (const file of item.assets || []) assetPaths.add(`/${file}`);
+      }
 
-      await cache.addAll(assetPaths);
+      await cache.addAll([...assetPaths]);
     }),
   );
 

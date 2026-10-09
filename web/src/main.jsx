@@ -1,7 +1,13 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
-import "@alifd/next/dist/next.css";
+// 只引入项目实际使用的 Fusion Next 组件样式，避免把整套组件库 CSS 放进入口包。
+import "@alifd/next/lib/button/index.css";
+import "@alifd/next/lib/checkbox/index.css";
+import "@alifd/next/lib/dialog/index.css";
+import "@alifd/next/lib/icon/index.css";
+import "@alifd/next/lib/input/index.css";
+import "@alifd/next/lib/message/index.css";
 import "./styles/global.css";
 import App from "./app/App";
 import { AuthProvider } from "./features/auth/AuthContext";

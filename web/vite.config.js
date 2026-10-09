@@ -19,5 +19,23 @@ export default defineConfig({
   build: {
     outDir: path.resolve(__dirname, "../server/dist"),
     emptyOutDir: true,
+    // Service Worker 读取构建清单，将入口、异步路由和各自 CSS 一并加入离线缓存。
+    manifest: "asset-manifest.json",
+    rollupOptions: {
+      output: {
+        manualChunks(id) {
+          if (!id.includes("node_modules")) return undefined;
+          if (id.includes("node_modules/@alifd/next")) return "vendor-fusion";
+          if (
+            /node_modules\/(react-markdown|unified|remark-|rehype-|micromark|mdast-|hast-)/.test(
+              id,
+            )
+          ) {
+            return "vendor-markdown";
+          }
+          return "vendor";
+        },
+      },
+    },
   },
 });

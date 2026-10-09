@@ -34,9 +34,9 @@ Vercel Function 可能冷启动、水平扩展或被回收：
 
 ## 4. PWA 与发布
 
-Service Worker 位于站点根路径才能控制整个 SPA。它不会缓存 `/api`，避免缓存登录态和业务数据；导航使用 Network First，同源静态资源使用 Cache First。
+Service Worker 位于站点根路径才能控制整个 SPA。它不会缓存 `/api`，避免缓存登录态和业务数据；导航使用 Network First，同源静态资源使用 Cache First。Vite 输出 `asset-manifest.json`，Service Worker 安装时依据清单预缓存入口和异步路由 chunk，保证拆包后未访问过的路由仍可离线打开。
 
-修改应用外壳或缓存策略时必须递增 `CACHE_NAME`。Vite 生成的 JS/CSS 带内容哈希，但运行时图片等缓存仍需关注容量和过期策略。发布后应检查 Manifest、Service Worker、离线入口和深层 React Router URL。
+修改应用外壳或缓存策略时必须递增 `CACHE_NAME`。Vite 生成的 JS/CSS 带内容哈希；页面使用 `React.lazy` 按路由加载，构建配置再把 React、Fusion Next、Markdown 等依赖拆成独立 vendor chunk。运行时图片等缓存仍需关注容量和过期策略。发布后应检查 Manifest、Service Worker、离线入口和深层 React Router URL。
 
 ## 5. 部署前检查
 

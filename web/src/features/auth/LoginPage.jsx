@@ -4,7 +4,7 @@ import { Navigate, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "./AuthContext";
 
 export default function LoginPage() {
-  const { user, login } = useAuth();
+  const { user, login, authError, refreshAuth } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [username, setUsername] = useState("");
@@ -33,6 +33,12 @@ export default function LoginPage() {
         <p className="eyebrow">WELCOME BACK</p>
         <h1>登录 ABC English</h1>
         <p>登录后管理收藏夹和学习内容。</p>
+        {authError && (
+          <div className="page-state error-state">
+            <p>{authError}</p>
+            <Button onClick={refreshAuth}>重新确认登录状态</Button>
+          </div>
+        )}
         <form onSubmit={submit}>
           <label className="auth-field">
             <span>用户名</span>

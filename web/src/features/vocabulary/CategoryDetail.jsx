@@ -1,15 +1,18 @@
 import { Checkbox, Input } from "@alifd/next";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
 import { get } from "../../services/api";
 import { useAuth } from "../auth/AuthContext";
 import WordCard from "./WordCard";
+import { favoriteIdentity } from "../favorites/favoriteIdentity";
 
 export default function CategoryDetail() {
   const { level, recordId } = useParams();
   const { user } = useAuth();
   const [page, setPage] = useState(null);
   const [collections, setCollections] = useState([]);
+  const [collectionsLoading, setCollectionsLoading] = useState(false);
+  const [collectionsError, setCollectionsError] = useState("");
   const [favoriteOverrides, setFavoriteOverrides] = useState(new Map());
   const [query, setQuery] = useState("");
   const [showWord, setShowWord] = useState(
@@ -31,19 +34,33 @@ export default function CategoryDetail() {
       });
     return () => controller.abort();
   }, [recordId]);
+  const loadCollections = useCallback(
+    async (signal) => {
+      if (!user) {
+        setCollections([]);
+        setCollectionsError("");
+        setCollectionsLoading(false);
+        return;
+      }
+      setCollectionsLoading(true);
+      setCollectionsError("");
+      try {
+        setCollections(await get("/collections", { signal }));
+      } catch (requestError) {
+        if (requestError.name !== "AbortError") {
+          setCollectionsError(requestError.message);
+        }
+      } finally {
+        if (!signal?.aborted) setCollectionsLoading(false);
+      }
+    },
+    [user],
+  );
   useEffect(() => {
     const controller = new AbortController();
-    if (user) {
-      get("/collections", { signal: controller.signal })
-        .then(setCollections)
-        .catch((requestError) => {
-          if (requestError.name !== "AbortError") setCollections([]);
-        });
-    } else {
-      setCollections([]);
-    }
+    loadCollections(controller.signal);
     return () => controller.abort();
-  }, [user]);
+  }, [loadCollections]);
   // 局部覆盖只属于当前用户和分类；切换上下文后以服务端收藏数据为准。
   useEffect(() => setFavoriteOverrides(new Map()), [recordId, user?.id]);
   useEffect(() => localStorage.setItem("show-word", showWord), [showWord]);
@@ -64,9 +81,11 @@ export default function CategoryDetail() {
           );
   }, [page, query]);
   const defaultCollection = collections.find((item) => item.isDefault);
-  const favoriteKeys = useMemo(() => {
+  const favoriteIdentities = useMemo(() => {
     const set = new Set(
-      defaultCollection?.favorites?.map((item) => item.wordKey) || [],
+      defaultCollection?.favorites?.map((item) =>
+        favoriteIdentity(item.recordId, item.wordKey),
+      ) || [],
     );
     for (const [key, value] of favoriteOverrides) {
       if (value) {
@@ -129,6 +148,17 @@ export default function CategoryDetail() {
         </div>
         <span className="result-count">{filtered.length} 个结果</span>
       </div>
+      {user && collectionsLoading && (
+        <div className="page-state">正在加载收藏状态…</div>
+      )}
+      {user && collectionsError && (
+        <div className="page-state error-state">
+          <p>收藏状态加载失败：{collectionsError}</p>
+          <button type="button" onClick={() => loadCollections()}>
+            重试
+          </button>
+        </div>
+      )}
       <div className="word-list">
         {filtered.map((card, index) => (
           <WordCard
@@ -138,7 +168,7 @@ export default function CategoryDetail() {
             showWord={showWord}
             showTranslation={showTranslation}
             defaultCollection={defaultCollection}
-            favoriteKeys={favoriteKeys}
+            favoriteIdentities={favoriteIdentities}
             onFavoriteChange={(key, value) =>
               setFavoriteOverrides((old) => new Map(old).set(key, value))
             }

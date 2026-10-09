@@ -29,11 +29,11 @@ test("favorite lookup keys preserve both parts without delimiter collisions", ()
   );
 });
 
-test("favorite words are deduplicated and loaded with one bulk query", async () => {
+test("favorite words are deduplicated and loaded in bounded batches", async () => {
   const originalFindMany = prisma.vocabularyWord.findMany;
-  let receivedQuery;
+  const receivedQueries = [];
   prisma.vocabularyWord.findMany = async (query) => {
-    receivedQuery = query;
+    receivedQueries.push(query);
     return [
       {
         categoryRecordId: "category-1",
@@ -46,12 +46,20 @@ test("favorite words are deduplicated and loaded with one bulk query", async () 
     ];
   };
   try {
-    const result = await vocabulary.findWords([
+    const favorites = [
       { recordId: "category-1", wordKey: "word-1" },
       { recordId: "category-1", wordKey: "word-1" },
       { recordId: "category-1", wordKey: "translation:translation-1" },
-    ]);
-    assert.equal(receivedQuery.where.OR.length, 2);
+      ...Array.from({ length: 250 }, (_, index) => ({
+        recordId: `category-${index + 2}`,
+        wordKey: `word-${index + 2}`,
+      })),
+    ];
+    const result = await vocabulary.findWords(favorites);
+    assert.deepEqual(
+      receivedQueries.map((query) => query.where.OR.length),
+      [250, 2],
+    );
     assert.equal(result.size, 2);
     assert.equal(
       result.get(
