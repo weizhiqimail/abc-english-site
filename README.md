@@ -26,7 +26,7 @@ web/public/          PWA manifest、Service Worker 与图标
 vercel.json          Vercel 构建、函数和 SPA 路由配置
 ```
 
-`server/dist` 和 `server/generated` 是构建产物，不提交到版本库。
+`server/dist` 和 `server/generated` 是构建产物，不提交到版本库。启动 API 和执行 Vercel 构建时会自动重新生成 Prisma Client，因此可以安全清理这些目录。
 
 ## Vercel 环境变量
 
@@ -36,7 +36,6 @@ vercel.json          Vercel 构建、函数和 SPA 路由配置
 | ----------------------- | -------- | ------------------------------ |
 | `POSTGRES_PRISMA_URL`   | 是       | Neon 池化连接，供线上 API 使用 |
 | `DATABASE_URL_UNPOOLED` | 是       | Neon 非池化直连，供迁移使用    |
-| `DATABASE_PROVIDER`     | 是       | 设置为 `postgres`              |
 | `ADMIN_USERNAME`        | 初始化时 | 初始管理员用户名               |
 | `ADMIN_PASSWORD`        | 初始化时 | 初始管理员密码，至少 12 位     |
 | `NODE_ENV`              | 否       | Vercel 生产运行时自动设置      |
@@ -49,37 +48,29 @@ vercel.json          Vercel 构建、函数和 SPA 路由配置
 npm install
 npx vercel login
 npx vercel link
-npx vercel env add DATABASE_PROVIDER production,preview,development --value postgres --no-sensitive --yes
-npx vercel env add ADMIN_USERNAME production
-npx vercel env add ADMIN_PASSWORD production --sensitive
-npx vercel env run -e production -- npm run db:migrate:postgres
-npx vercel env run -e production -- npm run db:seed-admin
 npm run deploy:vercel
 ```
 
-部署前应确保 Postgres 中已经存在业务所需数据。Vercel 构建仅生成 Prisma Client 和前端产物。
+部署前应在 Vercel 中配置数据库连接环境变量，并确保 Postgres 已经由私有配套项目完成建表和数据维护。公开项目不会主动修改数据库结构或初始化数据；Vercel 构建只生成 Prisma Client 和前端产物。
 
 ## 本地开发
 
 ```bash
 npm install
 npx vercel link
-npm run db:generate:postgres
 npm run site:dev
 ```
 
-前端默认运行在 `http://localhost:5173`，API 默认运行在 `http://127.0.0.1:3211`。Vite 会把 `/api` 代理到本地 API。
+`site:dev` 和 `site:server` 会先自动生成 Prisma Client，即使清理过 `.gitignore` 中的构建产物也能正常启动。前端默认运行在 `http://localhost:5173`，API 默认运行在 `http://127.0.0.1:3211`。Vite 会把 `/api` 代理到本地 API。
 
 ## 常用命令
 
 ```bash
 npm run site:dev             # 同时启动前端和 API
+npm run site:server          # 只启动 API（自动生成 Prisma Client）
 npm run web:build            # 构建前端
 npm run vercel:build         # 完整 Vercel 构建
-npm run db:generate:postgres # 生成 Prisma Client
-npm run db:migrate:postgres  # 初始化 Postgres 表
-npm run db:seed-admin        # 创建初始管理员
-npm run db:migrate:error-logs:production # 创建生产错误日志表
+npm run db:generate          # 仅生成 Prisma Client，不修改数据库
 npm run site:test            # API 冒烟测试
 npm run site:test:unit       # 防御性校验与日志单元测试
 npm run format:site:check    # 检查代码格式

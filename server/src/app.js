@@ -48,10 +48,7 @@ function createApp() {
         ? error
         : new Error(String(error || "Unknown error"));
     const databaseErrors = new Set(["P1000", "P1001", "P1003", "P1012"]);
-    const databaseConfigured =
-      process.env.DATABASE_PROVIDER === "mysql"
-        ? process.env.DATABASE_URL
-        : process.env.POSTGRES_PRISMA_URL;
+    const databaseConfigured = process.env.POSTGRES_PRISMA_URL;
     const isJsonSyntaxError =
       normalizedError instanceof SyntaxError &&
       normalizedError.status === 400 &&
