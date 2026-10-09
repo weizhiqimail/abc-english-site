@@ -11,12 +11,15 @@ ABC English 是一个按 CEFR 等级（A1–C2）组织的英语词汇学习网�
 
 浏览器通过同域 `/api` 请求后端，不需要公开额外的 API 地址或配置跨域。
 
+## 关联项目
+
+本项目关联一个独立的私有配套仓库：[abc-english-site-private](https://github.com/weizhiqimail/abc-english-site-private)。该仓库不公开，访问需要单独授权；具体职责和使用说明以其私有 README 为准。
+
 ## 目录说明
 
 ```text
 api/                 Vercel Serverless 入口
 prisma/postgres/     Postgres 模型与版本化 SQL 迁移
-scripts/             可公开的辅助服务
 server/src/          Express API、认证、收藏与词汇服务
 web/src/             React 前端
 web/public/          PWA manifest、Service Worker 与图标
@@ -80,20 +83,10 @@ npm run site:test            # API 冒烟测试
 npm run format:site:check    # 检查代码格式
 ```
 
-## 辅助服务
-
-| 模块          | 用途                   | 常用命令                                  |
-| ------------- | ---------------------- | ----------------------------------------- |
-| `lexicon-hub` | 本地词汇管理和批量任务 | `npm run lexicon:dev`                     |
-| `qiniu`       | 对象存储上传           | `npm run qiniu:upload -- demo ./file.png` |
-| `phonetic`    | IPA 音标解析与规范化   | 由 Node API 调用                          |
-| `tts`         | Google TTS 发音合成    | 由 Node API 调用                          |
-
-更多说明见 [`scripts/README.md`](scripts/README.md) 及各模块 README。
-
 ## 数据与认证
 
-- 业务数据由 Postgres 提供。
+- 业务数据全部由在线 Postgres 提供；公开仓库不保存采集正文、解析结果、数据库备份或维护脚本。
+- 数据采集、批量维护、对象存储、TTS 和数据库备份工具位于私有配套仓库。
 - 登录使用 HttpOnly、SameSite=Lax Cookie。
 - 密码使用 bcrypt 哈希；登录令牌只保存 SHA-256 摘要。
 - 管理员数据浏览接口会对密码哈希和令牌摘要进行脱敏。
