@@ -9,12 +9,28 @@ export default function SearchPage() {
   const q = params.get("q") || "";
   const [value, setValue] = useState(q);
   const [results, setResults] = useState({ categories: [], words: [] });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
   useEffect(() => {
     setValue(q);
+    setResults({ categories: [], words: [] });
+    setError("");
     if (!q) {
-      return;
+      setLoading(false);
+      return undefined;
     }
-    get(`/search?q=${encodeURIComponent(q)}`).then(setResults);
+    const controller = new AbortController();
+    setLoading(true);
+    // URL 查询变化时取消旧请求；否则较慢的旧响应可能覆盖较新的搜索结果。
+    get(`/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+      .then(setResults)
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setError(requestError.message);
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) setLoading(false);
+      });
+    return () => controller.abort();
   }, [q]);
   const submit = (event) => {
     event.preventDefault();
@@ -35,7 +51,9 @@ export default function SearchPage() {
         />
         <button>搜索</button>
       </form>
-      {q && (
+      {loading && <div className="page-state">正在搜索…</div>}
+      {error && <div className="page-state error-state">{error}</div>}
+      {q && !loading && !error && (
         <>
           <div className="search-summary">
             “{q}” 找到 {results.words.length} 个词汇、

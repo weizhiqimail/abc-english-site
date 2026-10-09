@@ -248,6 +248,62 @@ async function findWord(recordId, wordKey) {
   };
 }
 
+const favoriteLookupKey = (recordId, wordKey) =>
+  JSON.stringify([String(recordId), String(wordKey)]);
+
+async function findWords(favorites = []) {
+  if (!Array.isArray(favorites) || favorites.length === 0) return new Map();
+  const unique = new Map();
+  for (const favorite of favorites) {
+    const recordId = String(favorite?.recordId || "").trim();
+    const wordKey = String(favorite?.wordKey || "").trim();
+    if (recordId && wordKey) {
+      unique.set(favoriteLookupKey(recordId, wordKey), { recordId, wordKey });
+    }
+  }
+  if (unique.size === 0) return new Map();
+
+  // 收藏关系没有直接外键到词条，需按 (分类 ID, 词条键) 批量匹配。
+  // 一次 findMany 取代逐条 findWord，避免 Serverless 并发放大数据库连接压力。
+  const rows = await prisma.vocabularyWord.findMany({
+    where: {
+      OR: [...unique.values()].map(({ recordId, wordKey }) => {
+        const isTranslation = wordKey.startsWith("translation:");
+        return {
+          categoryRecordId: recordId,
+          ...(isTranslation
+            ? { translationId: wordKey.slice("translation:".length) }
+            : { wordEntryId: wordKey }),
+        };
+      }),
+    },
+    include: {
+      category: true,
+      examples: { orderBy: { position: "asc" } },
+    },
+  });
+  const found = new Map();
+  for (const row of rows) {
+    const value = {
+      page: {
+        identity: { level: row.category.level },
+        subcategory: { localizedTitle: row.category.localizedTitle },
+      },
+      card: cardFromRow(row),
+    };
+    // 历史收藏可能使用 translation: 键，即使同一行后来已经具备 wordEntryId，也必须按原键命中。
+    const candidateKeys = [
+      row.wordEntryId && String(row.wordEntryId),
+      `translation:${row.translationId}`,
+    ].filter(Boolean);
+    for (const wordKey of candidateKeys) {
+      const key = favoriteLookupKey(row.categoryRecordId, wordKey);
+      if (unique.has(key)) found.set(key, value);
+    }
+  }
+  return found;
+}
+
 module.exports = {
   LEVELS,
   normalizeLevel,
@@ -256,4 +312,6 @@ module.exports = {
   getCategory,
   search,
   findWord,
+  findWords,
+  favoriteLookupKey,
 };

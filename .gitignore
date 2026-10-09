@@ -7,3 +7,4 @@ server/generated/
 .vercel/
 *.log
 .agents/
+.tmp/

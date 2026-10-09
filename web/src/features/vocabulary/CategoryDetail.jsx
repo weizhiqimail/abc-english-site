@@ -10,6 +10,7 @@ export default function CategoryDetail() {
   const { user } = useAuth();
   const [page, setPage] = useState(null);
   const [collections, setCollections] = useState([]);
+  const [favoriteOverrides, setFavoriteOverrides] = useState(new Map());
   const [query, setQuery] = useState("");
   const [showWord, setShowWord] = useState(
     () => localStorage.getItem("show-word") !== "false",
@@ -19,19 +20,32 @@ export default function CategoryDetail() {
   );
   const [error, setError] = useState("");
   useEffect(() => {
-    get(`/vocabulary/categories/${recordId}`)
+    const controller = new AbortController();
+    // 路由参数变化时先清空旧页面和错误，避免在新请求期间展示上一分类，或让旧错误永久遮住新结果。
+    setPage(null);
+    setError("");
+    get(`/vocabulary/categories/${recordId}`, { signal: controller.signal })
       .then(setPage)
-      .catch((e) => setError(e.message));
+      .catch((requestError) => {
+        if (requestError.name !== "AbortError") setError(requestError.message);
+      });
+    return () => controller.abort();
   }, [recordId]);
   useEffect(() => {
+    const controller = new AbortController();
     if (user) {
-      get("/collections")
+      get("/collections", { signal: controller.signal })
         .then(setCollections)
-        .catch(() => setCollections([]));
+        .catch((requestError) => {
+          if (requestError.name !== "AbortError") setCollections([]);
+        });
     } else {
       setCollections([]);
     }
+    return () => controller.abort();
   }, [user]);
+  // 局部覆盖只属于当前用户和分类；切换上下文后以服务端收藏数据为准。
+  useEffect(() => setFavoriteOverrides(new Map()), [recordId, user?.id]);
   useEffect(() => localStorage.setItem("show-word", showWord), [showWord]);
   useEffect(
     () => localStorage.setItem("show-translation", showTranslation),
@@ -50,7 +64,6 @@ export default function CategoryDetail() {
           );
   }, [page, query]);
   const defaultCollection = collections.find((item) => item.isDefault);
-  const [favoriteOverrides, setFavoriteOverrides] = useState(new Map());
   const favoriteKeys = useMemo(() => {
     const set = new Set(
       defaultCollection?.favorites?.map((item) => item.wordKey) || [],
@@ -68,7 +81,7 @@ export default function CategoryDetail() {
     return <div className="page-state error-state">{error}</div>;
   }
   if (!page) {
-    return null;
+    return <div className="page-state">正在加载分类…</div>;
   }
   return (
     <section className="content-width detail-page">

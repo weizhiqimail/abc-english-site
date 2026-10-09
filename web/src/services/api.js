@@ -33,7 +33,8 @@ export async function api(path, options = {}) {
   }
 }
 
-export const get = (path) => api(path);
+// GET 也透传 AbortSignal 等 fetch 选项。页面切换时可以取消旧请求，避免过期响应覆盖新状态。
+export const get = (path, options = {}) => api(path, options);
 export const post = (path, body, options = {}) =>
   api(path, { ...options, method: "POST", body: JSON.stringify(body) });
 export const patch = (path, body, options = {}) =>

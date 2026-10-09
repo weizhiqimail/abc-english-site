@@ -58,23 +58,25 @@ npm run deploy:vercel
 ```bash
 npm install
 npx vercel link
-npm run site:dev
+npm run dev
 ```
 
-`site:dev` 和 `site:server` 会先自动生成 Prisma Client，即使清理过 `.gitignore` 中的构建产物也能正常启动。前端默认运行在 `http://localhost:5173`，API 默认运行在 `http://127.0.0.1:3211`。Vite 会把 `/api` 代理到本地 API。
+`dev` 和 `server` 会先自动生成 Prisma Client，即使清理过 `.gitignore` 中的构建产物也能正常启动。前端默认运行在 `http://localhost:5173`，API 默认运行在 `http://127.0.0.1:3211`。Vite 会把 `/api` 代理到本地 API。
 
 ## 常用命令
 
 ```bash
-npm run site:dev             # 同时启动前端和 API
-npm run site:server          # 只启动 API（自动生成 Prisma Client）
+npm run dev                  # 同时启动前端和 API
+npm run server               # 只启动 API（自动生成 Prisma Client）
 npm run web:build            # 构建前端
 npm run vercel:build         # 完整 Vercel 构建
 npm run db:generate          # 仅生成 Prisma Client，不修改数据库
-npm run site:test            # API 冒烟测试
-npm run site:test:unit       # 防御性校验与日志单元测试
-npm run format:site:check    # 检查代码格式
+npm test                     # 运行单元测试
+npm run test:smoke           # 对已启动的 API 执行冒烟测试
+npm run format:check         # 检查代码格式
 ```
+
+更完整的架构、开发、部署和重点模块说明见 [`docs/`](docs/01-项目概览与架构.md)。
 
 ## 服务日志与错误留存
 

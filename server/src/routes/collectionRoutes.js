@@ -12,7 +12,7 @@ const {
 } = require("../utils/validation");
 const { assertMethods } = require("../utils/contracts");
 
-assertMethods(vocabulary, "vocabularyService", ["findWord"]);
+assertMethods(vocabulary, "vocabularyService", ["findWord", "findWords"]);
 
 const router = express.Router();
 router.use("/collections", requireAuth);
@@ -30,28 +30,26 @@ router.get(
       include: includeFavorites,
       orderBy: [{ isDefault: "desc" }, { createdAt: "asc" }],
     });
-    const hydrated = await Promise.all(
-      collections.map(async (collection) => ({
-        ...collection,
-        favorites: await Promise.all(
-          collection.favorites.map(async (favorite) => {
-            const found = await vocabulary.findWord(
-              favorite.recordId,
-              favorite.wordKey,
-            );
-            return {
-              ...favorite,
-              card: found?.card || null,
-              page: found?.page || null,
-              word: found?.card?.word || favorite.wordKey,
-              localizedDefinition: found?.card?.localizedDefinition || null,
-              level: found?.page?.identity?.level || null,
-              categoryTitle: found?.page.subcategory.localizedTitle || null,
-            };
-          }),
-        ),
-      })),
-    );
+    const favorites = collections.flatMap((collection) => collection.favorites);
+    const wordsByFavorite = await vocabulary.findWords(favorites);
+    // 查询服务返回复合键 Map，路由只负责保持原收藏夹响应结构，不再逐条访问数据库。
+    const hydrated = collections.map((collection) => ({
+      ...collection,
+      favorites: collection.favorites.map((favorite) => {
+        const found = wordsByFavorite.get(
+          vocabulary.favoriteLookupKey(favorite.recordId, favorite.wordKey),
+        );
+        return {
+          ...favorite,
+          card: found?.card || null,
+          page: found?.page || null,
+          word: found?.card?.word || favorite.wordKey,
+          localizedDefinition: found?.card?.localizedDefinition || null,
+          level: found?.page?.identity?.level || null,
+          categoryTitle: found?.page.subcategory.localizedTitle || null,
+        };
+      }),
+    }));
     ok(response, hydrated);
   }),
 );
