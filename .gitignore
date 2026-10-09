@@ -1,0 +1,15 @@
+node_modules/
+.env
+.env.*
+!.env.example
+server/dist/
+server/generated/
+.vercel/
+*.log
+
+.vercel
+.env*
+
+.agents/
+scripts/qiniu/data/
+scripts/lexicon-hub/logs/

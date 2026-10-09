@@ -1,0 +1,46 @@
+<div class="table-responsive border rounded bg-white">
+  <table class="table table-hover align-middle mb-0">
+    <thead>
+      <tr>
+        <% if (selectable) { %><th></th><% } %>
+        <th>词汇</th><th>分类</th><th>原始图片</th><th>七牛图片</th><th>音标</th><th>发音音频</th>
+        <% if (showActions) { %><th>操作</th><% } %>
+      </tr>
+    </thead>
+    <tbody>
+      <% words.forEach((word) => { %>
+        <tr id="word-<%= word.id %>">
+          <% if (selectable) { %>
+            <td><input class="form-check-input word-select" type="checkbox" value="<%= word.id %>" /></td>
+          <% } %>
+          <td><strong><%= word.word %></strong><div class="small text-secondary"><%= word.partOfSpeechType || "" %></div></td>
+          <td><span class="badge text-bg-secondary"><%= word.category.level %></span> <%= word.category.title %></td>
+          <td>
+            <% if (word.photoThumbnailUrl || word.photoUrl) { %>
+              <img class="word-image" loading="lazy" src="<%= word.photoThumbnailUrl || word.photoUrl %>" alt="原始图片" />
+            <% } else { %><span class="badge text-bg-secondary">无来源</span><% } %>
+          </td>
+          <td>
+            <% if (word.ownedImageDisplayUrl) { %>
+              <img class="word-image" loading="lazy" src="<%= word.ownedImageDisplayUrl %>" alt="七牛图片" />
+              <div><span class="badge text-bg-success">已发布</span></div>
+            <% } else if (word.ownedImageStatus === "failed") { %>
+              <span class="badge text-bg-danger" title="<%= word.ownedImageError || '' %>">失败</span>
+            <% } else if (word.ownedImageStatus === "uploading") { %>
+              <span class="badge text-bg-info">上传中</span>
+            <% } else { %><span class="badge text-bg-warning">待上传</span><% } %>
+          </td>
+          <td>
+            <% if (!word.hasPhonetic) { %><span class="badge text-bg-warning">缺失</span><% } else { %>
+              <% word.pronunciations.forEach((item) => { %><div><small><%= item.locale %></small> /<%= item.ipa %>/</div><% }) %>
+            <% } %>
+          </td>
+          <td><span class="badge text-bg-<%= word.hasAudio ? 'success' : 'warning' %>"><%= word.hasAudio ? "已发布" : "缺失" %></span></td>
+          <% if (showActions) { %>
+            <td><button class="btn btn-sm btn-outline-primary enrich" data-id="<%= word.id %>">补全发音</button></td>
+          <% } %>
+        </tr>
+      <% }) %>
+    </tbody>
+  </table>
+</div>

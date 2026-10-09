@@ -1,0 +1,9 @@
+<nav class="mt-3" aria-label="词汇分页">
+  <ul class="pagination flex-wrap">
+    <% for (let page = 1; page <= pages; page += 1) { %>
+      <li class="page-item <%= page === filters.page ? 'active' : '' %>">
+        <a class="page-link" href="?level=<%= encodeURIComponent(filters.level) %>&category=<%= encodeURIComponent(filters.categoryRecordId) %>&keyword=<%= encodeURIComponent(filters.keyword) %>&page=<%= page %>"><%= page %></a>
+      </li>
+    <% } %>
+  </ul>
+</nav>

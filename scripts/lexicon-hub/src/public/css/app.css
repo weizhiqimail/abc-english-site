@@ -1,0 +1,26 @@
+.word-image {
+  width: 56px;
+  height: 42px;
+  object-fit: cover;
+  border-radius: 0.375rem;
+  background: #eee;
+}
+
+.sticky-actions {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+}
+
+.sidebar-nav {
+  top: 1rem;
+}
+
+.display-flex-center {
+  display: flex;
+  align-items: center;
+}
+
+.with-auto {
+  width: auto;
+}

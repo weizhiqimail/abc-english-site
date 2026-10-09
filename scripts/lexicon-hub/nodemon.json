@@ -1,0 +1,15 @@
+{
+  "watch": [
+    "scripts/lexicon-hub/src",
+    "scripts/qiniu",
+    "scripts/tts",
+    "scripts/phonetic"
+  ],
+  "ignore": [
+    "scripts/lexicon-hub/logs/**",
+    "scripts/qiniu/data/**",
+    "**/node_modules/**",
+    "**/tests/**"
+  ],
+  "ext": "js,ejs,json"
+}

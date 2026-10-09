@@ -1,0 +1,19 @@
+{
+  "name": "ABC English 英语学习",
+  "short_name": "ABC English",
+  "description": "按等级探索和学习英语词汇",
+  "lang": "zh-CN",
+  "start_url": "/vocabulary",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#4f46e5",
+  "icons": [
+    {
+      "src": "/icons/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

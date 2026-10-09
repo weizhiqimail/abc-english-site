@@ -1,0 +1,30 @@
+<form class="row g-2 mb-3" method="get">
+  <div class="col-sm-2">
+    <select name="level" class="form-select">
+      <option value="">全部等级</option>
+      <% ["A1", "A2", "B1", "B2", "C1", "C2"].forEach((level) => { %>
+        <option value="<%= level %>" <%= filters.level === level ? "selected" : "" %>><%= level %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="col-sm-5">
+    <select name="category" class="form-select">
+      <option value="">全部分类</option>
+      <% categories.forEach((category) => { %>
+        <option
+          value="<%= category.recordId %>"
+          <%= filters.categoryRecordId === category.recordId ? "selected" : "" %>
+        ><%= category.level %> · <%= category.title %></option>
+      <% }) %>
+    </select>
+  </div>
+  <div class="col-sm-3">
+    <input
+      name="keyword"
+      value="<%= filters.keyword %>"
+      class="form-control"
+      placeholder="搜索词汇"
+    />
+  </div>
+  <div class="col-sm-2 d-grid"><button class="btn btn-primary">筛选</button></div>
+</form>

@@ -1,0 +1,10 @@
+{
+  "name": "@abc-english/phonetic",
+  "version": "1.0.0",
+  "private": true,
+  "description": "可插拔的词汇音标解析服务",
+  "main": "index.js",
+  "scripts": {
+    "test": "node --test --test-isolation=none tests/*.test.js"
+  }
+}

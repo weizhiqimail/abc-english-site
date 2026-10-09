@@ -1,0 +1,23 @@
+<%- include("../partials/header", { title: "词汇分类", pageScript: "" }) %>
+<div class="row g-4">
+  <section class="col-12 col-lg-12">
+    <div class="d-flex justify-content-between align-items-center mb-3">
+      <div><h1 class="h3 mb-1">词汇分类</h1><div class="text-secondary"><%= selectedLevel ? `${selectedLevel} 等级` : "全部等级" %></div></div>
+      <% if (selectedLevel) { %><a class="btn btn-outline-secondary" href="/vocabulary/categories">查看全部</a><% } %>
+    </div>
+    <div class="row g-3">
+      <% progress.forEach((item) => { %>
+        <div class="col-12 col-md-6 col-xl-4">
+          <a class="card h-100 text-decoration-none" href="/vocabulary/categories/<%= encodeURIComponent(item.record_id) %>">
+            <div class="card-body">
+              <div><span class="badge text-bg-secondary me-2"><%= item.level %></span><strong><%= item.title %></strong></div>
+              <div class="small text-secondary mt-3">图片 <%= item.with_image %>/<%= item.total %></div>
+              <div class="small text-secondary">音标 <%= item.with_phonetic %>/<%= item.total %> · 音频 <%= item.with_audio %>/<%= item.total %></div>
+            </div>
+          </a>
+        </div>
+      <% }) %>
+    </div>
+  </section>
+</div>
+<%- include("../partials/footer", { pageScript: "" }) %>
