@@ -37,6 +37,7 @@ export default function Layout() {
   const [query, setQuery] = useState("");
   const [accountOpen, setAccountOpen] = useState(false);
   const [loading, setLoading] = useState(() => getActiveRequestCount() > 0);
+  const [notifications, setNotifications] = useState([]);
   const accountRef = useRef(null);
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -45,6 +46,23 @@ export default function Layout() {
     const handleLoading = (event) => setLoading(event.detail > 0);
     window.addEventListener("abc:api-loading", handleLoading);
     return () => window.removeEventListener("abc:api-loading", handleLoading);
+  }, []);
+
+  useEffect(() => {
+    const handleNotification = (event) => {
+      const item = event.detail;
+      setNotifications((current) => [...current, item].slice(-3));
+      window.setTimeout(
+        () =>
+          setNotifications((current) =>
+            current.filter((notification) => notification.id !== item.id),
+          ),
+        3000,
+      );
+    };
+    window.addEventListener("abc:notification", handleNotification);
+    return () =>
+      window.removeEventListener("abc:notification", handleNotification);
   }, []);
 
   useEffect(() => {
@@ -193,6 +211,17 @@ export default function Layout() {
           <strong>正在加载…</strong>
         </div>
       )}
+      <div className="notification-stack" aria-live="polite">
+        {notifications.map((item) => (
+          <div
+            className={`app-notification ${item.type || "success"}`}
+            key={item.id}
+            role="status"
+          >
+            {item.message}
+          </div>
+        ))}
+      </div>
       <footer className="site-footer">
         <strong>ABC English</strong>
         <span>按等级探索英语词汇</span>

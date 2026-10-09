@@ -124,6 +124,10 @@ async function main() {
     (item) => item.id === temporaryCollectionId,
   );
   assert(testedCollection?._count.favorites === 1, "收藏数量没有更新");
+  assert(
+    testedCollection?.favorites[0]?.card?.word,
+    "收藏夹详情没有返回完整词卡数据",
+  );
   await expect(
     `/api/collections/${temporaryCollectionId}/favorites/${encodeURIComponent(wordKey)}`,
     200,

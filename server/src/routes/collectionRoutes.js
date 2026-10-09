@@ -41,9 +41,11 @@ router.get(
             );
             return {
               ...favorite,
-              word: found?.card.word || favorite.wordKey,
-              localizedDefinition: found?.card.localizedDefinition || null,
-              level: found?.page.identity.level || null,
+              card: found?.card || null,
+              page: found?.page || null,
+              word: found?.card?.word || favorite.wordKey,
+              localizedDefinition: found?.card?.localizedDefinition || null,
+              level: found?.page?.identity?.level || null,
               categoryTitle: found?.page.subcategory.localizedTitle || null,
             };
           }),

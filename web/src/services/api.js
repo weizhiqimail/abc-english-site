@@ -11,14 +11,15 @@ function updateGlobalLoading(change) {
 }
 
 export async function api(path, options = {}) {
-  updateGlobalLoading(1);
+  const { globalLoading = true, ...fetchOptions } = options;
+  if (globalLoading) updateGlobalLoading(1);
   try {
     const response = await fetch(`/api${path}`, {
       credentials: "include",
-      headers: options.body
-        ? { "Content-Type": "application/json", ...options.headers }
-        : options.headers,
-      ...options,
+      headers: fetchOptions.body
+        ? { "Content-Type": "application/json", ...fetchOptions.headers }
+        : fetchOptions.headers,
+      ...fetchOptions,
     });
     const payload = await response
       .json()
@@ -28,13 +29,14 @@ export async function api(path, options = {}) {
     }
     return payload.data;
   } finally {
-    updateGlobalLoading(-1);
+    if (globalLoading) updateGlobalLoading(-1);
   }
 }
 
 export const get = (path) => api(path);
-export const post = (path, body) =>
-  api(path, { method: "POST", body: JSON.stringify(body) });
-export const patch = (path, body) =>
-  api(path, { method: "PATCH", body: JSON.stringify(body) });
-export const remove = (path) => api(path, { method: "DELETE" });
+export const post = (path, body, options = {}) =>
+  api(path, { ...options, method: "POST", body: JSON.stringify(body) });
+export const patch = (path, body, options = {}) =>
+  api(path, { ...options, method: "PATCH", body: JSON.stringify(body) });
+export const remove = (path, options = {}) =>
+  api(path, { ...options, method: "DELETE" });

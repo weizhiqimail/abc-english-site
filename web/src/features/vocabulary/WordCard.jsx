@@ -1,9 +1,10 @@
 import { Button, Dialog, Message } from "@alifd/next";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
 import { post, remove } from "../../services/api";
+import { notify } from "../../services/notification";
 
 const Placeholder = ({ onClick }) => (
   <button type="button" className="masked-text" onClick={onClick}>
@@ -17,18 +18,20 @@ export default function WordCard({
   showWord,
   showTranslation,
   defaultCollection,
+  favoriteCollectionLabel = "默认收藏夹",
   favoriteKeys,
   onFavoriteChange,
 }) {
   // 每个字段分别记录临时显示状态，点击某一项不会影响同卡片的其他内容。
-  const [revealedWord, setRevealedWord] = useState(false);
-  const [revealedTranslation, setRevealedTranslation] = useState(false);
+  const [wordVisible, setWordVisible] = useState(showWord);
+  const [translationVisible, setTranslationVisible] = useState(showTranslation);
   const [revealedOtherTranslation, setRevealedOtherTranslation] =
-    useState(false);
-  const [revealedExamples, setRevealedExamples] = useState(() => new Set());
+    useState(showTranslation);
+  const [exampleVisibility, setExampleVisibility] = useState(() => new Map());
   const [imageOpen, setImageOpen] = useState(false);
   const [imageFailed, setImageFailed] = useState(false);
   const [showAllExamples, setShowAllExamples] = useState(false);
+  const [favoritePending, setFavoritePending] = useState(false);
   const { user } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
@@ -39,11 +42,26 @@ export default function WordCard({
   const favorite = favoriteKeys?.has(wordKey);
   const examples = card.examples || [];
   const visibleExamples = showAllExamples ? examples : examples.slice(0, 2);
-  const revealExample = (exampleKey) => {
-    setRevealedExamples((current) => new Set(current).add(exampleKey));
-  };
+  useEffect(() => setWordVisible(showWord), [showWord]);
+  useEffect(() => {
+    setTranslationVisible(showTranslation);
+    setRevealedOtherTranslation(showTranslation);
+    setExampleVisibility(new Map());
+  }, [showTranslation]);
+
+  const exampleIsVisible = (exampleKey) =>
+    exampleVisibility.has(exampleKey)
+      ? exampleVisibility.get(exampleKey)
+      : showTranslation;
+  const toggleExample = (exampleKey) =>
+    setExampleVisibility((current) => {
+      const next = new Map(current);
+      next.set(exampleKey, !exampleIsVisible(exampleKey));
+      return next;
+    });
 
   const toggleFavorite = async () => {
+    if (favoritePending) return;
     if (!user) {
       Message.notice("请先登录后收藏词汇");
       navigate("/login", {
@@ -56,19 +74,25 @@ export default function WordCard({
       return;
     }
     try {
+      setFavoritePending(true);
       if (favorite) {
         await remove(
           `/collections/${defaultCollection.id}/favorites/${encodeURIComponent(wordKey)}`,
+          { globalLoading: false },
         );
       } else {
-        await post(`/collections/${defaultCollection.id}/favorites`, {
-          recordId,
-          wordKey,
-        });
+        await post(
+          `/collections/${defaultCollection.id}/favorites`,
+          { recordId, wordKey },
+          { globalLoading: false },
+        );
       }
       onFavoriteChange?.(wordKey, !favorite);
+      notify(favorite ? "已取消收藏" : `已收藏到“${favoriteCollectionLabel}”`);
     } catch (error) {
-      Message.error(error.message);
+      notify(error.message, "error");
+    } finally {
+      setFavoritePending(false);
     }
   };
   const pos = card.partOfSpeech;
@@ -92,17 +116,31 @@ export default function WordCard({
           <div>
             <div className="word-and-translation">
               <h3>
-                {showWord || revealedWord ? (
-                  card.word
+                {wordVisible ? (
+                  <button
+                    type="button"
+                    className="visible-text-toggle word-text-toggle"
+                    onClick={() => setWordVisible(false)}
+                    aria-label="隐藏词汇"
+                  >
+                    {card.word}
+                  </button>
                 ) : (
-                  <Placeholder onClick={() => setRevealedWord(true)} />
+                  <Placeholder onClick={() => setWordVisible(true)} />
                 )}
               </h3>
               <span className="translation">
-                {showTranslation || revealedTranslation ? (
-                  card.localizedDefinition
+                {translationVisible ? (
+                  <button
+                    type="button"
+                    className="visible-text-toggle translation-text-toggle"
+                    onClick={() => setTranslationVisible(false)}
+                    aria-label="隐藏翻译"
+                  >
+                    {card.localizedDefinition}
+                  </button>
                 ) : (
-                  <Placeholder onClick={() => setRevealedTranslation(true)} />
+                  <Placeholder onClick={() => setTranslationVisible(true)} />
                 )}
               </span>
             </div>
@@ -114,6 +152,7 @@ export default function WordCard({
             className={`favorite-star ${favorite ? "active" : ""}`}
             aria-label={favorite ? "取消收藏" : "收藏"}
             onClick={toggleFavorite}
+            disabled={favoritePending}
           >
             {favorite ? "★" : "☆"}
           </button>
@@ -142,8 +181,14 @@ export default function WordCard({
         {card.localizedOtherTranslations && (
           <p className="other-translation">
             其他含义：
-            {showTranslation || revealedOtherTranslation ? (
-              card.localizedOtherTranslations
+            {revealedOtherTranslation ? (
+              <button
+                type="button"
+                className="visible-text-toggle"
+                onClick={() => setRevealedOtherTranslation(false)}
+              >
+                {card.localizedOtherTranslations}
+              </button>
             ) : (
               <Placeholder onClick={() => setRevealedOtherTranslation(true)} />
             )}
@@ -168,12 +213,18 @@ export default function WordCard({
             <div className="example" key={exampleKey}>
               <Markdown>{example.example}</Markdown>
               <div className="example-cn">
-                {showTranslation || revealedExamples.has(exampleKey) ? (
-                  <Markdown>
-                    {example.localizedProperties?.example || ""}
-                  </Markdown>
+                {exampleIsVisible(exampleKey) ? (
+                  <button
+                    type="button"
+                    className="visible-text-toggle example-translation-toggle"
+                    onClick={() => toggleExample(exampleKey)}
+                  >
+                    <Markdown>
+                      {example.localizedProperties?.example || ""}
+                    </Markdown>
+                  </button>
                 ) : (
-                  <Placeholder onClick={() => revealExample(exampleKey)} />
+                  <Placeholder onClick={() => toggleExample(exampleKey)} />
                 )}
               </div>
             </div>

@@ -51,6 +51,14 @@ export default function App() {
           }
         />
         <Route
+          path="favorites/:collectionId"
+          element={
+            <Protected>
+              <CollectionsPage />
+            </Protected>
+          }
+        />
+        <Route
           path="admin/users"
           element={
             <Protected admin>
