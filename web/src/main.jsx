@@ -1,6 +1,8 @@
 import React from "react";
 import ReactDOM from "react-dom/client";
 import { BrowserRouter } from "react-router-dom";
+import { Analytics } from "@vercel/analytics/react";
+import { SpeedInsights } from "@vercel/speed-insights/react";
 // 只引入项目实际使用的 Fusion Next 组件样式，避免把整套组件库 CSS 放进入口包。
 import "@alifd/next/lib/button/index.css";
 import "@alifd/next/lib/checkbox/index.css";
@@ -24,6 +26,8 @@ ReactDOM.createRoot(document.getElementById("root")).render(
       <SettingsProvider>
         <AuthProvider>
           <App />
+          <Analytics />
+          <SpeedInsights />
         </AuthProvider>
       </SettingsProvider>
     </BrowserRouter>
