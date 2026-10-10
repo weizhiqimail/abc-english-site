@@ -1,7 +1,12 @@
 import { Button, Checkbox, Dialog, Input } from "@alifd/next";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Link, useNavigate, useParams } from "react-router-dom";
-import { get, patch, post, remove } from "../../services/api";
+import {
+  createCollection,
+  deleteCollection as requestDeleteCollection,
+  queryCollections,
+  renameCollection,
+} from "../../https/requests/collections";
 import { notify } from "../../services/notification";
 import WordCard from "../vocabulary/WordCard";
 import { favoriteIdentity } from "./favoriteIdentity";
@@ -27,13 +32,19 @@ export default function CollectionsPage() {
     setLoading(true);
     setLoadError("");
     try {
-      setCollections(await get("/collections", { signal }));
+      setCollections(await queryCollections({ signal }));
     } catch (requestError) {
-      if (requestError.name === "AbortError") return;
+      if (requestError.name === "AbortError") {
+        return;
+      }
       setLoadError(requestError.message);
-      if (rethrow) throw requestError;
+      if (rethrow) {
+        throw requestError;
+      }
     } finally {
-      if (!signal?.aborted) setLoading(false);
+      if (!signal?.aborted) {
+        setLoading(false);
+      }
     }
   }, []);
 
@@ -48,9 +59,13 @@ export default function CollectionsPage() {
     [showTranslation],
   );
   useEffect(() => {
-    if (actionId == null) return undefined;
+    if (actionId == null) {
+      return undefined;
+    }
     const close = (event) => {
-      if (!actionsRef.current?.contains(event.target)) setActionId(null);
+      if (!actionsRef.current?.contains(event.target)) {
+        setActionId(null);
+      }
     };
     document.addEventListener("pointerdown", close);
     return () => document.removeEventListener("pointerdown", close);
@@ -64,10 +79,15 @@ export default function CollectionsPage() {
   const saveName = async () => {
     try {
       const trimmedName = name.trim();
-      if (!trimmedName) return;
-      nameDialog === "new"
-        ? await post("/collections", { name: trimmedName })
-        : await patch(`/collections/${nameDialog.id}`, { name: trimmedName });
+      if (!trimmedName) {
+        return;
+      }
+      // 新建对话框没有收藏夹 ID，已有对象则必须执行重命名。
+      if (nameDialog === "new") {
+        await createCollection(trimmedName);
+      } else {
+        await renameCollection(nameDialog.id, trimmedName);
+      }
       setNameDialog(null);
       setName("");
       await load({ rethrow: true });
@@ -84,7 +104,7 @@ export default function CollectionsPage() {
       content: `“${item.name}”中的收藏关系将被永久删除。`,
       onOk: async () => {
         try {
-          await remove(`/collections/${item.id}`);
+          await requestDeleteCollection(item.id);
           setCollections((current) =>
             current.filter((collection) => collection.id !== item.id),
           );

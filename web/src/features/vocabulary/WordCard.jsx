@@ -3,7 +3,7 @@ import { useEffect, useState } from "react";
 import Markdown from "react-markdown";
 import { useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
-import { post, remove } from "../../services/api";
+import { addFavorite, deleteFavorite } from "../../https/requests/collections";
 import { notify } from "../../services/notification";
 import { favoriteIdentity } from "../favorites/favoriteIdentity";
 
@@ -63,7 +63,10 @@ export default function WordCard({
     });
 
   const toggleFavorite = async () => {
-    if (favoritePending) return;
+    // 请求进行中禁止重复提交，避免同一收藏被连续增删。
+    if (favoritePending) {
+      return;
+    }
     if (!user) {
       Message.notice("请先登录后收藏词汇");
       navigate("/login", {
@@ -78,13 +81,12 @@ export default function WordCard({
     try {
       setFavoritePending(true);
       if (favorite) {
-        await remove(
-          `/collections/${defaultCollection.id}/favorites/${encodeURIComponent(wordKey)}?recordId=${encodeURIComponent(recordId)}`,
-          { globalLoading: false },
-        );
+        await deleteFavorite(defaultCollection.id, wordKey, recordId, {
+          globalLoading: false,
+        });
       } else {
-        await post(
-          `/collections/${defaultCollection.id}/favorites`,
+        await addFavorite(
+          defaultCollection.id,
           { recordId, wordKey },
           { globalLoading: false },
         );
@@ -99,14 +101,16 @@ export default function WordCard({
   };
   const pos = card.partOfSpeech;
   const grammar = pos?.grammaticalInformation || {};
+  let countableLabel = null;
+  // 只有后端明确给出布尔值时才显示可数性，null 表示数据未知。
+  if (typeof grammar.isCountable === "boolean") {
+    countableLabel = grammar.isCountable ? "是" : "否";
+  }
   const grammarItems = [
     ["词性", pos?.partOfSpeechType],
     ["复数", grammar.pluralForm],
     ["构词", grammar.composition],
-    [
-      "可数",
-      grammar.isCountable == null ? null : grammar.isCountable ? "是" : "否",
-    ],
+    ["可数", countableLabel],
     ["类别", grammar.hypernyms?.join("、")],
   ].filter(
     ([, value]) => value !== null && value !== undefined && value !== "",

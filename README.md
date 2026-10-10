@@ -22,6 +22,7 @@ api/                 Vercel Serverless 入口
 prisma/postgres/     Postgres 模型与版本化 SQL 迁移
 server/src/          Express API、认证、收藏与词汇服务
 web/src/             React 前端
+web/src/https/       Axios 基础服务与业务请求方法
 web/public/          PWA manifest、Service Worker 与图标
 vercel.json          Vercel 构建、函数和 SPA 路由配置
 ```
@@ -76,7 +77,7 @@ npm run test:smoke           # 对已启动的 API 执行冒烟测试
 npm run format:check         # 检查代码格式
 ```
 
-更完整的架构、开发、部署和重点模块说明见 [`docs/`](docs/01-项目概览与架构.md)。
+更完整的架构、开发、部署和重点模块说明见 [`docs/`](docs/01-项目概览与架构.md)，项目编码约束见 [`docs/06-代码规范.md`](docs/06-代码规范.md)。
 
 ## 服务日志与错误留存
 

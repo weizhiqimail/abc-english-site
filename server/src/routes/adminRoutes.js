@@ -11,6 +11,7 @@ const {
   positiveInteger,
   requirePlainObject,
   requiredString,
+  USERNAME_PATTERN,
 } = require("../utils/validation");
 
 const router = express.Router();
@@ -83,7 +84,9 @@ function sanitizeDatabaseRow(row) {
       if (key === "passwordHash" || key === "tokenHash") {
         return [key, "[敏感信息已隐藏]"];
       }
-      if (typeof value === "bigint") return [key, value.toString()];
+      if (typeof value === "bigint") {
+        return [key, value.toString()];
+      }
       return [key, value];
     }),
   );
@@ -166,7 +169,7 @@ router.post(
       label: "用户名",
       minLength: 3,
       maxLength: 80,
-      pattern: /^[A-Za-z0-9._@-]+$/,
+      pattern: USERNAME_PATTERN,
       patternMessage: "用户名只能包含字母、数字及 . _ @ -",
     });
     const password = requiredString(body.password, {
@@ -230,7 +233,7 @@ router.patch(
         label: "用户名",
         minLength: 3,
         maxLength: 80,
-        pattern: /^[A-Za-z0-9._@-]+$/,
+        pattern: USERNAME_PATTERN,
         patternMessage: "用户名只能包含字母、数字及 . _ @ -",
       });
       data.username = username;

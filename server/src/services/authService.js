@@ -4,6 +4,8 @@ const prisma = require("../lib/prisma");
 const { tokenMaxAgeMs } = require("../config");
 const DUMMY_PASSWORD_HASH =
   "$2b$12$rLZRlPiThw7vtbI4BQ/mduaDX/P8PQT.vHU0DMJve8mwhSuFbALNO";
+// AUTH_TOKEN_PATTERN 只接受 base64url 字符，避免将任意 Cookie 内容送入令牌查询。
+const AUTH_TOKEN_PATTERN = /^[A-Za-z0-9_-]+$/;
 
 // 数据库只保存 SHA-256 摘要，泄露数据库也无法直接得到浏览器 Cookie 中的令牌。
 const hashToken = (token) =>
@@ -18,7 +20,10 @@ const publicUser = (user) =>
   };
 
 async function login(username, password) {
-  if (typeof username !== "string" || typeof password !== "string") return null;
+  // 登录凭据必须都是字符串；非法类型不应进入数据库和哈希比较。
+  if (typeof username !== "string" || typeof password !== "string") {
+    return null;
+  }
   const user = await prisma.user.findUnique({ where: { username } });
   const passwordMatches = await bcrypt.compare(
     password,
@@ -41,7 +46,7 @@ async function authenticate(token) {
     typeof token !== "string" ||
     token.length < 32 ||
     token.length > 256 ||
-    !/^[A-Za-z0-9_-]+$/.test(token)
+    !AUTH_TOKEN_PATTERN.test(token)
   ) {
     return null;
   }
@@ -66,7 +71,7 @@ async function logout(token) {
     typeof token === "string" &&
     token.length >= 32 &&
     token.length <= 256 &&
-    /^[A-Za-z0-9_-]+$/.test(token)
+    AUTH_TOKEN_PATTERN.test(token)
   ) {
     await prisma.authToken.deleteMany({
       where: { tokenHash: hashToken(token) },

@@ -4,7 +4,9 @@ const LEVELS = ["A1", "A2", "B1", "B2", "C1", "C2"];
 const LEVEL_SET = new Set(LEVELS);
 
 function normalizeLevel(value) {
-  if (typeof value !== "string") return null;
+  if (typeof value !== "string") {
+    return null;
+  }
   const normalized = value.trim().toUpperCase();
   return LEVEL_SET.has(normalized) ? normalized : null;
 }
@@ -110,7 +112,9 @@ async function listCategories({ level, query } = {}) {
 }
 
 async function getCategory(recordId) {
-  if (typeof recordId !== "string" || !recordId.trim()) return null;
+  if (typeof recordId !== "string" || !recordId.trim()) {
+    return null;
+  }
   const category = await prisma.vocabularyCategory.findUnique({
     where: { recordId },
     include: {
@@ -253,7 +257,9 @@ const favoriteLookupKey = (recordId, wordKey) =>
 const FAVORITE_QUERY_BATCH_SIZE = 250;
 
 async function findWords(favorites = []) {
-  if (!Array.isArray(favorites) || favorites.length === 0) return new Map();
+  if (!Array.isArray(favorites) || favorites.length === 0) {
+    return new Map();
+  }
   const unique = new Map();
   for (const favorite of favorites) {
     const recordId = String(favorite?.recordId || "").trim();
@@ -262,7 +268,9 @@ async function findWords(favorites = []) {
       unique.set(favoriteLookupKey(recordId, wordKey), { recordId, wordKey });
     }
   }
-  if (unique.size === 0) return new Map();
+  if (unique.size === 0) {
+    return new Map();
+  }
 
   // 收藏关系没有直接外键到词条，需按 (分类 ID, 词条键) 批量匹配。
   // 每批设置上限并顺序执行，既消除 N+1，也避免超大 OR 和并发查询冲击 Serverless 连接池。
@@ -310,7 +318,9 @@ async function findWords(favorites = []) {
     ].filter(Boolean);
     for (const wordKey of candidateKeys) {
       const key = favoriteLookupKey(row.categoryRecordId, wordKey);
-      if (unique.has(key)) found.set(key, value);
+      if (unique.has(key)) {
+        found.set(key, value);
+      }
     }
   }
   return found;

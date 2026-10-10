@@ -1,12 +1,17 @@
 const crypto = require("node:crypto");
 const prisma = require("../lib/prisma");
 
-const secretKeyPattern =
+// SECRET_KEY_PATTERN 识别对象中可能承载凭据的键名，日志落盘前统一脱敏。
+const SECRET_KEY_PATTERN =
   /password|secret|token|cookie|authorization|api[-_]?key/i;
 
 function truncate(value, maximum) {
   const text = String(value ?? "");
-  return text.length <= maximum ? text : `${text.slice(0, maximum)}…`;
+  // 未超过上限的文本无需修改，超长文本必须截断以控制日志体积。
+  if (text.length <= maximum) {
+    return text;
+  }
+  return `${text.slice(0, maximum)}…`;
 }
 
 function sanitize(value, depth = 0, seen = new WeakSet()) {
@@ -17,11 +22,21 @@ function sanitize(value, depth = 0, seen = new WeakSet()) {
   ) {
     return value;
   }
-  if (typeof value === "bigint") return value.toString();
-  if (typeof value === "string") return truncate(value, 2000);
-  if (depth >= 4) return "[maximum-depth]";
-  if (typeof value !== "object") return truncate(value, 200);
-  if (seen.has(value)) return "[circular]";
+  if (typeof value === "bigint") {
+    return value.toString();
+  }
+  if (typeof value === "string") {
+    return truncate(value, 2000);
+  }
+  if (depth >= 4) {
+    return "[maximum-depth]";
+  }
+  if (typeof value !== "object") {
+    return truncate(value, 200);
+  }
+  if (seen.has(value)) {
+    return "[circular]";
+  }
   seen.add(value);
   if (Array.isArray(value)) {
     return value.slice(0, 50).map((item) => sanitize(item, depth + 1, seen));
@@ -31,7 +46,7 @@ function sanitize(value, depth = 0, seen = new WeakSet()) {
       .slice(0, 100)
       .map(([key, item]) => [
         key,
-        secretKeyPattern.test(key)
+        SECRET_KEY_PATTERN.test(key)
           ? "[redacted]"
           : sanitize(item, depth + 1, seen),
       ]),
@@ -72,9 +87,14 @@ function log(level, event, fields = {}) {
     event,
     ...sanitize(fields),
   });
-  if (level === "error" || level === "fatal") console.error(payload);
-  else if (level === "warning") console.warn(payload);
-  else console.log(payload);
+  // 错误和致命事件写 stderr，便于托管平台触发告警。
+  if (level === "error" || level === "fatal") {
+    console.error(payload);
+  } else if (level === "warning") {
+    console.warn(payload);
+  } else {
+    console.log(payload);
+  }
 }
 
 async function persistError(error, request, extra = {}) {

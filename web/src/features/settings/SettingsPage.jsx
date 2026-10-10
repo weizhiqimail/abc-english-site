@@ -15,6 +15,13 @@ export default function SettingsPage() {
   // 可由代码调用的安装提示。两者含义不同：iOS 可能可手动安装，但 installable 仍为 false。
   const [installed, setInstalled] = useState(isAppInstalled);
   const [installable, setInstallable] = useState(canInstallApp);
+  let installButtonLabel = "查看安装方式";
+  // 已安装状态优先；未安装且浏览器提供安装事件时才显示立即安装。
+  if (installed) {
+    installButtonLabel = "已安装";
+  } else if (installable) {
+    installButtonLabel = "立即安装";
+  }
 
   // beforeinstallprompt 和 appinstalled 都可能在组件挂载后发生，因此订阅统一状态事件。
   // useEffect 返回的取消订阅函数会在离开设置页时自动执行。
@@ -94,7 +101,7 @@ export default function SettingsPage() {
             从浏览器菜单手动安装，而不是错误地隐藏功能。
           */}
           <Button type="primary" disabled={installed} onClick={handleInstall}>
-            {installed ? "已安装" : installable ? "立即安装" : "查看安装方式"}
+            {installButtonLabel}
           </Button>
         </div>
 

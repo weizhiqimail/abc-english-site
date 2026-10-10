@@ -1,6 +1,9 @@
 import { Button, Message } from "@alifd/next";
 import { useEffect, useMemo, useState } from "react";
-import { get } from "../../services/api";
+import {
+  queryDatabaseOverview,
+  queryDatabaseTable,
+} from "../../https/requests/admin";
 
 function displayValue(value) {
   if (value === null || value === undefined) {
@@ -19,7 +22,7 @@ export default function DatabasePage() {
   const [page, setPage] = useState(1);
 
   useEffect(() => {
-    get("/admin/database")
+    queryDatabaseOverview()
       .then((data) => {
         setOverview(data);
         setSelectedTable((current) => current || data.tables[0]?.key || "");
@@ -31,7 +34,7 @@ export default function DatabasePage() {
     if (!selectedTable) {
       return;
     }
-    get(`/admin/database/${selectedTable}?page=${page}&pageSize=25`)
+    queryDatabaseTable(selectedTable, { page, pageSize: 25 })
       .then(setResult)
       .catch((error) => Message.error(error.message));
   }, [selectedTable, page]);

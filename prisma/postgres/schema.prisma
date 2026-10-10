@@ -10,30 +10,49 @@ datasource db {
 }
 
 enum UserRole {
+  /// 拥有用户和数据库管理权限。
   admin
+  /// 只能使用学习与个人收藏功能。
   user
 }
 
+/// 站点登录用户；一名用户可拥有多个登录令牌和收藏夹。
 model User {
+  /// 用户自增主键。
   id           Int          @id @default(autoincrement())
+  /// 登录用户名，全站唯一。
   username     String       @unique @db.VarChar(80)
+  /// bcrypt 密码摘要，绝不保存明文密码。
   passwordHash String       @map("password_hash") @db.VarChar(255)
+  /// 页面展示昵称。
   nickname     String       @db.VarChar(100)
+  /// 用户权限角色。
   role         UserRole     @default(user)
+  /// 用户创建时间。
   createdAt    DateTime     @default(now()) @map("created_at")
+  /// 用户资料最后更新时间。
   updatedAt    DateTime     @updatedAt @map("updated_at")
+  /// 用户的一对多登录令牌关系。
   tokens       AuthToken[]
+  /// 用户的一对多收藏夹关系。
   collections  Collection[]
 
   @@map("users")
 }
 
+/// 服务端会话令牌；每条令牌只属于一名用户，用户删除时级联删除。
 model AuthToken {
+  /// 令牌记录主键。
   id        Int      @id @default(autoincrement())
+  /// 浏览器令牌的 SHA-256 摘要，全局唯一。
   tokenHash String   @unique @map("token_hash") @db.Char(64)
+  /// 所属用户外键。
   userId    Int      @map("user_id")
+  /// 会话失效时间。
   expiresAt DateTime @map("expires_at")
+  /// 会话创建时间。
   createdAt DateTime @default(now()) @map("created_at")
+  /// 令牌到用户的多对一关系。
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@index([userId])
@@ -41,14 +60,23 @@ model AuthToken {
   @@map("auth_tokens")
 }
 
+/// 用户收藏夹；名称在同一用户范围内唯一，并包含多条收藏关系。
 model Collection {
+  /// 收藏夹主键。
   id        Int        @id @default(autoincrement())
+  /// 用户可见的收藏夹名称。
   name      String     @db.VarChar(100)
+  /// 是否为系统维护的默认收藏夹。
   isDefault Boolean    @default(false) @map("is_default")
+  /// 所属用户外键。
   userId    Int        @map("user_id")
+  /// 收藏夹创建时间。
   createdAt DateTime   @default(now()) @map("created_at")
+  /// 收藏夹最后更新时间。
   updatedAt DateTime   @updatedAt @map("updated_at")
+  /// 收藏夹到用户的多对一关系。
   user      User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+  /// 收藏夹的一对多收藏关系。
   favorites Favorite[]
 
   @@unique([userId, name])
@@ -56,14 +84,23 @@ model Collection {
   @@map("collections")
 }
 
+/// 收藏关系；通过分类记录 ID 与稳定词汇键引用词汇数据。
 model Favorite {
+  /// 收藏记录主键。
   id            Int        @id @default(autoincrement())
+  /// 所属收藏夹外键。
   collectionId  Int        @map("collection_id")
+  /// 兼容不同词汇来源的稳定业务键。
   wordKey       String     @map("word_key") @db.VarChar(100)
+  /// 词汇所属分类的业务 ID。
   recordId      String     @map("record_id") @db.VarChar(64)
+  /// 可选词条 ID。
   wordEntryId   String?    @map("word_entry_id") @db.VarChar(64)
+  /// 可选翻译 ID。
   translationId String?    @map("translation_id") @db.VarChar(64)
+  /// 收藏创建时间。
   createdAt     DateTime   @default(now()) @map("created_at")
+  /// 收藏到收藏夹的多对一关系。
   collection    Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
 
   @@unique([collectionId, recordId, wordKey])
@@ -71,48 +108,86 @@ model Favorite {
   @@map("favorites")
 }
 
+/// CEFR 词汇分类；一条分类包含多条词汇。
 model VocabularyCategory {
+  /// 分类业务主键。
   recordId                     String           @id @map("record_id") @db.VarChar(64)
+  /// 上游子分类 ID。
   subcategoryId                String           @map("subcategory_id") @db.VarChar(64)
+  /// CEFR 等级（A1 至 C2）。
   level                        String           @db.VarChar(2)
+  /// 分类在等级内的排序序号。
   classificationIndex          Int              @map("classification_index")
+  /// 分类稳定键。
   classificationKey            String           @map("classification_key") @db.VarChar(32)
+  /// 英文分类标题。
   title                        String           @db.Text
+  /// 本地化分类标题。
   localizedTitle               String?          @map("localized_title") @db.Text
+  /// 英文分类说明。
   description                  String?          @db.Text
+  /// 本地化分类说明。
   localizedDescription         String?          @map("localized_description") @db.Text
+  /// 分类包含的词汇总数。
   wordCount                    Int              @map("word_count")
+  /// 预计学习时长（秒）。
   estimatedLearningTimeSeconds Int?             @map("estimated_learning_time_seconds")
+  /// 分类的一对多词汇关系。
   words                        VocabularyWord[]
 
   @@index([level, classificationIndex])
   @@map("vocabulary_categories")
 }
 
+/// 词汇卡片主体；属于一个分类，可包含例句和发音关联。
 model VocabularyWord {
+  /// 词汇记录自增主键。
   id                         Int                           @id @default(autoincrement())
+  /// 所属分类外键。
   categoryRecordId           String                        @map("category_record_id") @db.VarChar(64)
+  /// 上游翻译 ID。
   translationId              String                        @map("translation_id") @db.VarChar(64)
+  /// 可选上游词条 ID。
   wordEntryId                String?                       @map("word_entry_id") @db.VarChar(64)
+  /// 词汇在分类内的位置。
   position                   Int
+  /// 英文词汇文本。
   word                       String                        @db.Text
+  /// 英文释义。
   definition                 String?                       @db.Text
+  /// 本地化释义。
   localizedDefinition        String?                       @map("localized_definition") @db.Text
+  /// 其他本地化含义。
   localizedOtherTranslations String?                       @map("localized_other_translations") @db.Text
+  /// 词性类型。
   partOfSpeechType           String?                       @map("part_of_speech_type") @db.VarChar(80)
+  /// 复数形式。
   pluralForm                 String?                       @map("plural_form") @db.Text
+  /// 构词说明。
   composition                String?                       @db.Text
+  /// 是否可数；未知时为空。
   isCountable                Boolean?                      @map("is_countable")
+  /// 上位词 JSON 数组。
   hypernyms                  Json?
+  /// 图片原始标题。
   photoOriginalTitle         String?                       @map("photo_original_title") @db.Text
+  /// 上游原图 URL。
   photoUrl                   String?                       @map("photo_url") @db.Text
+  /// 上游缩略图 URL。
   photoThumbnailUrl          String?                       @map("photo_thumbnail_url") @db.Text
+  /// 自有存储中的公开图片 URL。
   ownedImageUrl              String?                       @map("owned_image_url") @db.Text
+  /// 自有存储对象键。
   ownedImageObjectKey        String?                       @map("owned_image_object_key") @db.Text
+  /// 自有图片处理状态。
   ownedImageStatus           String                        @default("pending") @map("owned_image_status") @db.VarChar(32)
+  /// 自有图片处理错误信息。
   ownedImageError            String?                       @map("owned_image_error") @db.Text
+  /// 词汇到分类的多对一关系。
   category                   VocabularyCategory            @relation(fields: [categoryRecordId], references: [recordId], onDelete: Cascade)
+  /// 词汇的一对多例句关系。
   examples                   VocabularyExample[]
+  /// 词汇与发音的多对多连接关系。
   pronunciations             VocabularyWordPronunciation[]
 
   @@unique([categoryRecordId, position])
@@ -122,6 +197,7 @@ model VocabularyWord {
   @@map("vocabulary_words")
 }
 
+/// 规范化发音资料；可关联多个词汇，并拥有多份语音文件。
 model VocabularyPronunciation {
   id                 Int                            @id @default(autoincrement())
   normalizedWord     String                         @map("normalized_word") @db.Text
@@ -145,6 +221,7 @@ model VocabularyPronunciation {
   @@map("vocabulary_pronunciations")
 }
 
+/// 词汇与发音的多对多连接表，同时保存展示顺序和主发音标记。
 model VocabularyWordPronunciation {
   wordId          Int                     @map("word_id")
   pronunciationId Int                     @map("pronunciation_id")
@@ -158,6 +235,7 @@ model VocabularyWordPronunciation {
   @@map("vocabulary_word_pronunciations")
 }
 
+/// 发音语音生成结果；属于一条发音，保存供应商、对象存储和重试状态。
 model VocabularyPronunciationAudio {
   id                 Int                     @id @default(autoincrement())
   pronunciationId    Int                     @map("pronunciation_id")
@@ -187,6 +265,7 @@ model VocabularyPronunciationAudio {
   @@map("vocabulary_pronunciation_audio")
 }
 
+/// 图片或音频生成任务；通过目标类型、目标 ID 和批次键保证幂等。
 model MediaGenerationJob {
   id            Int       @id @default(autoincrement())
   jobType       String    @map("job_type") @db.VarChar(80)
@@ -207,6 +286,7 @@ model MediaGenerationJob {
   @@map("media_generation_jobs")
 }
 
+/// 词汇例句；每条例句属于一个词汇，词汇删除时级联删除。
 model VocabularyExample {
   id               Int            @id @default(autoincrement())
   sourceId         String?        @map("source_id") @db.VarChar(64)
@@ -220,6 +300,7 @@ model VocabularyExample {
   @@map("vocabulary_examples")
 }
 
+/// 服务端持久化错误日志；保存请求上下文、指纹和脱敏后的扩展信息。
 model ErrorLog {
   id           BigInt   @id @default(autoincrement())
   requestId    String?  @map("request_id") @db.VarChar(128)

@@ -1,37 +1,42 @@
 import { Input } from "@alifd/next";
 import { useEffect, useMemo, useState } from "react";
 import { Link, useParams } from "react-router-dom";
-import { get } from "../../services/api";
+import { queryLevelCategories } from "../../https/requests/vocabulary";
 
 export default function LevelCategories() {
   const { level: rawLevel } = useParams();
-  const level = rawLevel.toUpperCase();
+  // 路由参数可能缺失，先收窄为字符串再标准化，避免直接调用 undefined 的方法。
+  const level = typeof rawLevel === "string" ? rawLevel.toUpperCase() : "";
   const [categories, setCategories] = useState(null);
-  const [query, setQuery] = useState("");
-  const [error, setError] = useState("");
+  const [queryStr, setQueryStr] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
 
   useEffect(() => {
     setCategories(null);
-    setError("");
-    get(`/vocabulary/levels/${level}`)
-      .then((data) => setCategories(data.categories))
-      .catch((requestError) => setError(requestError.message));
+    setErrorMsg("");
+    queryLevelCategories(level)
+      .then((data) => {
+        // 服务端契约异常时使用空数组，保证后续 map/filter 始终安全。
+        setCategories(Array.isArray(data?.categories) ? data.categories : []);
+      })
+      .catch((requestError) => setErrorMsg(requestError.message));
   }, [level]);
 
   const filtered = useMemo(() => {
-    const needle = query.trim().toLocaleLowerCase();
-    if (!categories || !needle) {
-      return categories || [];
+    const normalizedQuery = queryStr.trim().toLocaleLowerCase();
+    // 数据未加载或搜索词为空时，无需执行过滤。
+    if (!Array.isArray(categories) || !normalizedQuery) {
+      return Array.isArray(categories) ? categories : [];
     }
     return categories.filter((item) =>
       `${item.title} ${item.localizedTitle}`
         .toLocaleLowerCase()
-        .includes(needle),
+        .includes(normalizedQuery),
     );
-  }, [categories, query]);
+  }, [categories, queryStr]);
 
-  if (error) {
-    return <div className="page-state error-state">{error}</div>;
+  if (errorMsg) {
+    return <div className="page-state error-state">{errorMsg}</div>;
   }
   if (!categories) {
     return null;
@@ -51,8 +56,8 @@ export default function LevelCategories() {
         </div>
         {categories.length > 0 && (
           <Input
-            value={query}
-            onChange={setQuery}
+            value={queryStr}
+            onChange={setQueryStr}
             placeholder="搜索中英文主题…"
             className="category-search"
           />

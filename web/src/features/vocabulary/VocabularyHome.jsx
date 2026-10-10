@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { get } from "../../services/api";
+import { queryVocabularyOverview } from "../../https/requests/vocabulary";
 
 const levelInfo = {
   A1: ["入门", "从日常生活中最基础的表达开始"],
@@ -14,18 +14,20 @@ const levelInfo = {
 export default function VocabularyHome() {
   const navigate = useNavigate();
   const [overview, setOverview] = useState(null);
-  const [error, setError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   useEffect(() => {
-    get("/overview")
+    queryVocabularyOverview()
       .then(setOverview)
-      .catch((e) => setError(e.message));
+      .catch((requestError) => setErrorMsg(requestError.message));
   }, []);
-  if (error) {
-    return <div className="page-state error-state">{error}</div>;
+  if (errorMsg) {
+    return <div className="page-state error-state">{errorMsg}</div>;
   }
   if (!overview) {
     return null;
   }
+  // overview.levels 来自远端数据，渲染前必须保证它确实是数组。
+  const levels = Array.isArray(overview.levels) ? overview.levels : [];
   return (
     <section className="content-width level-section vocabulary-level-page">
       <div className="section-heading">
@@ -36,7 +38,7 @@ export default function VocabularyHome() {
         <p>每个等级都由精心整理的主题组成</p>
       </div>
       <div className="level-grid">
-        {overview.levels.map((item) => (
+        {levels.map((item) => (
           <button
             key={item.level}
             onClick={() => navigate(`/vocabulary/${item.level.toLowerCase()}`)}

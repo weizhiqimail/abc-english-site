@@ -1,6 +1,11 @@
 import { Button, Dialog, Input, Message } from "@alifd/next";
 import { useEffect, useState } from "react";
-import { get, patch, post, remove } from "../../services/api";
+import {
+  createUser,
+  deleteUser as requestDeleteUser,
+  queryUsers,
+  updateUser,
+} from "../../https/requests/admin";
 
 const emptyForm = { username: "", nickname: "", password: "" };
 
@@ -9,7 +14,7 @@ export default function UsersPage() {
   const [editing, setEditing] = useState(null);
   const [form, setForm] = useState(emptyForm);
   const load = () =>
-    get("/admin/users")
+    queryUsers()
       .then(setUsers)
       .catch((e) => Message.error(e.message));
   useEffect(() => {
@@ -26,9 +31,9 @@ export default function UsersPage() {
   const save = async () => {
     try {
       if (editing === "new") {
-        await post("/admin/users", form);
+        await createUser(form);
       } else {
-        await patch(`/admin/users/${editing.id}`, form);
+        await updateUser(editing.id, form);
       }
       Message.success("保存成功");
       setEditing(null);
@@ -43,7 +48,7 @@ export default function UsersPage() {
       content: `将同时删除 ${user.username} 的收藏和登录状态。`,
       onOk: async () => {
         try {
-          await remove(`/admin/users/${user.id}`);
+          await requestDeleteUser(user.id);
           Message.success("已删除");
           load();
         } catch (e) {

@@ -2,7 +2,11 @@ const express = require("express");
 const vocabulary = require("../services/vocabularyService");
 const { ok, fail } = require("../utils/response");
 const asyncRoute = require("../utils/asyncRoute");
-const { optionalString, requiredString } = require("../utils/validation");
+const {
+  optionalString,
+  requiredString,
+  SAFE_RESOURCE_ID_PATTERN,
+} = require("../utils/validation");
 const { assertMethods } = require("../utils/contracts");
 
 assertMethods(vocabulary, "vocabularyService", [
@@ -81,7 +85,7 @@ router.get(
     const recordId = requiredString(request.params.recordId, {
       label: "分类 ID",
       maxLength: 64,
-      pattern: /^[A-Za-z0-9._:-]+$/,
+      pattern: SAFE_RESOURCE_ID_PATTERN,
       patternMessage: "分类 ID 格式错误",
     });
     const page = await vocabulary.getCategory(recordId);

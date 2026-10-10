@@ -6,7 +6,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { get, post } from "../../services/api";
+import {
+  loginWithPassword,
+  logoutCurrentUser,
+  queryCurrentUser,
+} from "../../https/requests/auth";
 
 const AuthContext = createContext(null);
 
@@ -18,7 +22,7 @@ export function AuthProvider({ children }) {
     setLoading(true);
     setAuthError("");
     try {
-      const result = await get("/auth/me");
+      const result = await queryCurrentUser();
       setUser(result.user);
     } catch (requestError) {
       // “确认失败”不能降级成“确认未登录”，否则受保护页面会错误跳转到登录页。
@@ -38,13 +42,13 @@ export function AuthProvider({ children }) {
       authError,
       refreshAuth,
       async login(username, password) {
-        const result = await post("/auth/login", { username, password });
+        const result = await loginWithPassword({ username, password });
         setUser(result.user);
         setAuthError("");
         return result.user;
       },
       async logout() {
-        await post("/auth/logout", {});
+        await logoutCurrentUser();
         setUser(null);
       },
     }),

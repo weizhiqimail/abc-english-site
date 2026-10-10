@@ -9,6 +9,7 @@ const {
   positiveInteger,
   requirePlainObject,
   requiredString,
+  SAFE_RESOURCE_ID_PATTERN,
 } = require("../utils/validation");
 const { assertMethods } = require("../utils/contracts");
 
@@ -125,13 +126,13 @@ router.post(
     const recordId = requiredString(body.recordId, {
       label: "分类 ID",
       maxLength: 64,
-      pattern: /^[A-Za-z0-9._:-]+$/,
+      pattern: SAFE_RESOURCE_ID_PATTERN,
       patternMessage: "分类 ID 格式错误",
     });
     const wordKey = requiredString(body.wordKey, {
       label: "词汇键",
       maxLength: 100,
-      pattern: /^[A-Za-z0-9._:-]+$/,
+      pattern: SAFE_RESOURCE_ID_PATTERN,
       patternMessage: "词汇键格式错误",
     });
     const collection = await prisma.collection.findFirst({
@@ -183,13 +184,13 @@ router.delete(
     const recordId = requiredString(request.query.recordId, {
       label: "分类 ID",
       maxLength: 64,
-      pattern: /^[A-Za-z0-9._:-]+$/,
+      pattern: SAFE_RESOURCE_ID_PATTERN,
       patternMessage: "分类 ID 格式错误",
     });
     const wordKey = requiredString(request.params.wordKey, {
       label: "词汇键",
       maxLength: 100,
-      pattern: /^[A-Za-z0-9._:-]+$/,
+      pattern: SAFE_RESOURCE_ID_PATTERN,
       patternMessage: "词汇键格式错误",
     });
     const collection = await prisma.collection.findFirst({

@@ -28,8 +28,12 @@ export function SettingsProvider({ children }) {
 
     // 系统主题会随操作系统实时变化，手动选择则固定在当前浏览器中。
     const applyTheme = () => {
-      root.dataset.theme =
-        theme === "system" ? (media.matches ? "dark" : "light") : theme;
+      let resolvedTheme = theme;
+      // 跟随系统时才读取媒体查询，手动主题保持用户选择。
+      if (theme === "system") {
+        resolvedTheme = media.matches ? "dark" : "light";
+      }
+      root.dataset.theme = resolvedTheme;
     };
 
     applyTheme();

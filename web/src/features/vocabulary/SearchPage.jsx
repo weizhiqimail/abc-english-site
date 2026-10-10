@@ -1,7 +1,7 @@
 import { Input } from "@alifd/next";
 import { useEffect, useState } from "react";
 import { Link, useNavigate, useSearchParams } from "react-router-dom";
-import { get } from "../../services/api";
+import { searchVocabulary } from "../../https/requests/vocabulary";
 
 export default function SearchPage() {
   const [params] = useSearchParams();
@@ -10,11 +10,11 @@ export default function SearchPage() {
   const [value, setValue] = useState(q);
   const [results, setResults] = useState({ categories: [], words: [] });
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [errorMsg, setErrorMsg] = useState("");
   useEffect(() => {
     setValue(q);
     setResults({ categories: [], words: [] });
-    setError("");
+    setErrorMsg("");
     if (!q) {
       setLoading(false);
       return undefined;
@@ -22,13 +22,19 @@ export default function SearchPage() {
     const controller = new AbortController();
     setLoading(true);
     // URL 查询变化时取消旧请求；否则较慢的旧响应可能覆盖较新的搜索结果。
-    get(`/search?q=${encodeURIComponent(q)}`, { signal: controller.signal })
+    searchVocabulary(q, { signal: controller.signal })
       .then(setResults)
       .catch((requestError) => {
-        if (requestError.name !== "AbortError") setError(requestError.message);
+        // 页面切换触发的取消不是错误，只有真实请求失败才展示。
+        if (requestError.name !== "AbortError") {
+          setErrorMsg(requestError.message);
+        }
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        // 已取消的请求不能再修改页面状态。
+        if (!controller.signal.aborted) {
+          setLoading(false);
+        }
       });
     return () => controller.abort();
   }, [q]);
@@ -52,8 +58,8 @@ export default function SearchPage() {
         <button>搜索</button>
       </form>
       {loading && <div className="page-state">正在搜索…</div>}
-      {error && <div className="page-state error-state">{error}</div>}
-      {q && !loading && !error && (
+      {errorMsg && <div className="page-state error-state">{errorMsg}</div>}
+      {q && !loading && !errorMsg && (
         <>
           <div className="search-summary">
             “{q}” 找到 {results.words.length} 个词汇、

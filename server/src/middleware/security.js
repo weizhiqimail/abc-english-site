@@ -14,9 +14,13 @@ function securityHeaders(_request, response, next) {
 }
 
 function sameOriginMutations(request, response, next) {
-  if (!mutationMethods.has(request.method)) return next();
+  if (!mutationMethods.has(request.method)) {
+    return next();
+  }
   const origin = request.get("origin");
-  if (!origin) return next();
+  if (!origin) {
+    return next();
+  }
   let parsed;
   try {
     parsed = new URL(origin);
@@ -54,7 +58,9 @@ function createRateLimit({ windowMs, maximum, keyPrefix }) {
     }
     if (buckets.size > 10_000) {
       for (const [bucketKey, bucket] of buckets) {
-        if (bucket.resetAt <= now) buckets.delete(bucketKey);
+        if (bucket.resetAt <= now) {
+          buckets.delete(bucketKey);
+        }
       }
     }
     next();
