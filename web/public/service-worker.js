@@ -89,7 +89,7 @@
  */
 
 // 缓存版本号也是升级开关。改变预缓存内容或缓存逻辑时应同步递增版本。
-const CACHE_NAME = "abc-english-shell-v2";
+const CACHE_NAME = "abc-english-shell-v3";
 
 // 最小应用外壳：入口页、默认启动路由、manifest 和图标必须能在离线时直接取得。
 const APP_SHELL = [
@@ -153,7 +153,8 @@ self.addEventListener("fetch", (event) => {
   if (
     request.method !== "GET" ||
     url.origin !== self.location.origin ||
-    url.pathname.startsWith("/api/")
+    url.pathname.startsWith("/api/") ||
+    url.pathname.startsWith("/_vercel/")
   ) {
     return;
   }
